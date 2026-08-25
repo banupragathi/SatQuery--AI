@@ -23,6 +23,9 @@ from __future__ import annotations
 import os
 import uuid
 
+from dotenv import load_dotenv
+load_dotenv()  # reads backend/.env so GEMINI_API_KEY is available
+
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel

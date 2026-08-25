@@ -1,52 +1,61 @@
 """
 caption.py  ---  Captioning / Scene Description specialist
-==========================================================
-
-This specialist will eventually produce a natural-language description of a
-whole satellite scene ("Describe the land cover in this image.") using a
-real remote-sensing Vision-Language Model.
-
-Like the VQA specialist, NO MODEL IS CONNECTED YET, and we do not fake
-results. analyze() returns an honest "model not connected yet" state that
-the frontend displays directly.
-
-The structure mirrors vqa.py on purpose: every specialist exposes the same
-analyze(image_path, query) function and returns the same shape of result.
-That uniformity is what keeps the registry and the Manager simple.
+Describes a satellite scene using a real model (Gemini) via gemini_engine.py.
+Same honest tagging and fallback as the VQA specialist.
 """
 
+from gemini_engine import run_gemini, is_configured, GeminiError
+
 SPECIALIST_NAME = "CAPTION"
-MODEL_SLOT = "Remote-Sensing Vision-Language Model"
-MODEL_CONNECTED = False
+MODEL_SLOT = "Gemini (general-purpose VLM)"
+
+
+def _build_prompt(query: str) -> str:
+    return (
+        "You are analysing a satellite / aerial remote-sensing image. "
+        "Give a clear, factual description of the land cover and notable "
+        "features visible in the scene (for example: water bodies, vegetation, "
+        "built-up/urban areas, bare land, agricultural fields, roads). "
+        "Describe only what is visibly present. Be concise.\n\n"
+        f"User request: {query}"
+    )
 
 
 def analyze(image_path: str, query: str) -> dict:
-    """
-    Produce a description of the scene.
-
-    Parameters
-    ----------
-    image_path : str
-        Path to the validated, stored image on the server.
-    query : str
-        The user's natural-language request (e.g. "Describe this image.").
-
-    Returns
-    -------
-    dict
-        Structured result. 'answer' is None until a real model is connected.
-    """
-    if not MODEL_CONNECTED:
+    if not is_configured():
         return {
             "task": "Captioning / Scene Description",
             "specialist": SPECIALIST_NAME,
             "model": MODEL_SLOT,
             "model_connected": False,
             "answer": None,
-            "message": "AI model integration pending.",
+            "message": "AI model integration pending (no API key configured).",
             "confidence": None,
             "evidence": None,
         }
 
-    # --- Phase 2 will replace this with a real model call. ---
-    raise NotImplementedError("Caption model is marked connected but analyze() is not implemented.")
+    try:
+        answer_text = run_gemini(image_path, _build_prompt(query))
+    except GeminiError as e:
+        return {
+            "task": "Captioning / Scene Description",
+            "specialist": SPECIALIST_NAME,
+            "model": MODEL_SLOT,
+            "model_connected": False,
+            "answer": None,
+            "message": f"Model call failed: {e}",
+            "confidence": None,
+            "evidence": None,
+        }
+
+    return {
+        "task": "Captioning / Scene Description",
+        "specialist": SPECIALIST_NAME,
+        "model": MODEL_SLOT,
+        "model_connected": True,
+        "answer": answer_text,
+        "message": "Described by a general-purpose model (Gemini). "
+                   "Remote-sensing-adapted model is the fine-tuned specialist.",
+        "confidence": None,
+        "evidence": None,
+    }
