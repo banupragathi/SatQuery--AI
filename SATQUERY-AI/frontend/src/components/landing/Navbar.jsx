@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
   legible over content further down.
 */
 const NAV_LINKS = [
+  { label: "The Idea", href: "#the-idea" },
   { label: "How it works", href: "#how-it-works" },
   { label: "Capabilities", href: "#capabilities" },
   { label: "Multimodal", href: "#multimodal" },

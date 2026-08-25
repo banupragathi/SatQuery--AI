@@ -106,7 +106,19 @@ export default function ResultPanel({ result }) {
       )}
 
       {/* placeholders for future signal, clearly labelled */}
-      <div className="grid grid-cols-2 gap-px border-t border-line bg-line">
+            <div className="grid grid-cols-2 gap-px border-t border-line bg-line">
+        <div className="bg-panel px-6 py-4">
+          <p className="font-mono text-[0.58rem] uppercase tracking-[0.16em] text-faint">
+            Confidence
+          </p>
+          <p className="mt-1 text-sm text-faint">
+            {result.confidence
+              ? result.confidence
+              : connected
+              ? "Not available for this model"
+              : "Available once a model is connected"}
+          </p>
+        </div>
                 <div className="bg-panel px-6 py-4">
           <p className="font-mono text-[0.58rem] uppercase tracking-[0.16em] text-faint">
             Evidence

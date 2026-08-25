@@ -48,6 +48,9 @@ export default function WorkspaceHeader({ onReset }) {
             />
             {statusMeta.label}
           </span>
+                    <Link to="/" className="btn-ghost px-4 py-2 text-[0.64rem]">
+            Home
+          </Link>
           <button onClick={onReset} className="btn-ghost px-4 py-2 text-[0.64rem]">
             New analysis
           </button>
