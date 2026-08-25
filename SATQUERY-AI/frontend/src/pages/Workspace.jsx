@@ -144,6 +144,7 @@ export default function Workspace() {
                   previewUrl={previewUrl}
                   isTiff={tiff}
                   onRemove={handleReset}
+                  groundingBox={result?.evidence?.type === "bounding_box" ? result.evidence : null}
                 />
 
                 <div className="panel p-6">
@@ -182,7 +183,13 @@ export default function Workspace() {
 
           {/* RIGHT: output column */}
           <div>
-            {phase === "analyzing" && <ScanningState onComplete={handleScanComplete} />}
+              {phase === "analyzing" && (
+              <ScanningState
+                onComplete={handleScanComplete}
+                previewUrl={previewUrl}
+                isTiff={tiff}
+              />
+            )}
             {phase === "done" && <ResultPanel result={result} />}
             {(phase === "idle" || phase === "ready") && <IdleHint ready={phase === "ready"} />}
           </div>

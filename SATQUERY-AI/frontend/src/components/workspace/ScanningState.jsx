@@ -23,7 +23,7 @@ const STEPS = [
   "Preparing result",
 ];
 
-export default function ScanningState({ onComplete }) {
+export default function ScanningState({ onComplete, previewUrl, isTiff }) {
   const reduce = useReducedMotion();
   const [active, setActive] = useState(0);
 
@@ -52,11 +52,23 @@ export default function ScanningState({ onComplete }) {
 
   return (
     <div className="panel p-7">
-      {/* mini scanning visual */}
-      <div className="relative mb-7 h-28 overflow-hidden rounded-lg border border-line bg-deep grid-overlay">
-        <div className="scan-line absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-cyan/0 via-cyan/25 to-cyan/0" />
+            {/* mini scanning visual — shows the actual uploaded image being scanned */}
+      <div className="relative mb-7 h-40 overflow-hidden rounded-lg border border-line bg-deep grid-overlay">
+        {/* the real uploaded scene, dimmed so the scan line + text stay readable */}
+        {previewUrl && !isTiff && (
+          <img
+            src={previewUrl}
+            alt="Scene being analysed"
+            className="absolute inset-0 h-full w-full object-cover opacity-40"
+          />
+        )}
+        {/* faint dark wash for contrast */}
+        <div className="absolute inset-0 bg-void/40" />
+        {/* sweeping scan line */}
+        <div className="scan-line absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-cyan/0 via-cyan/30 to-cyan/0" />
+        {/* label */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="font-mono text-[0.66rem] uppercase tracking-[0.22em] text-cyanDim">
+          <span className="rounded bg-void/50 px-3 py-1 font-mono text-[0.66rem] uppercase tracking-[0.22em] text-cyan backdrop-blur-sm">
             Analysing
           </span>
         </div>

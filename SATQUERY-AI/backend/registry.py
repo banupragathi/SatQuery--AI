@@ -17,21 +17,23 @@ to the Manager or to main.py's core logic:
 That's the whole extensibility story. No classes, no framework.
 """
 
+
 import vqa
 import caption
+import grounding
 
 # Task label  ->  the function that handles it.
 # Every specialist function has the SAME shape: analyze(image_path, query).
 # Only VQA and CAPTION are active right now. Future specialists
 # (CHANGE, GROUNDING, OPTICAL_SAR) will be added here as they are built.
+
 SPECIALISTS = {
     "VQA": vqa.analyze,
     "CAPTION": caption.analyze,
+    "GROUNDING": grounding.analyze,
     # "CHANGE": change.analyze,          # Phase 3
-    # "GROUNDING": grounding.analyze,    # Phase 4
     # "OPTICAL_SAR": optical_sar.analyze # Phase 5
 }
-
 
 def get_specialist(task: str):
     """
