@@ -1,0 +1,237 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   SatQuery AI - design tokens & global styles
+   Palette: deep space navy/black, cool near-white type, restrained cyan +
+   deep signal-blue accents, a single sensor-amber used only for detection.
+   Typefaces: Sora (display), Inter (body), IBM Plex Mono (telemetry).
+   ========================================================================== */
+:root {
+  --void: #05070d;
+  --deep: #070b14;
+  --panel: #0b1120;
+  --raised: #0f1627;
+  --line: #1a2540;
+  --line-bright: #2a3b5c;
+  --ink: #e9f0fb;
+  --muted: #8896b2;
+  --faint: #5a6885;
+  --cyan: #4fd8ee;
+  --cyan-dim: #2aa7be;
+  --signal: #4c86f5;
+  --amber: #e8a64c;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--void);
+    color: var(--ink);
+    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* A faint fixed star/grain field so the whole site reads as "deep space"
+     without any image asset. Two layered radial gradients = scattered stars. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(1px 1px at 20% 30%, rgba(233, 240, 251, 0.5), transparent),
+      radial-gradient(1px 1px at 70% 65%, rgba(233, 240, 251, 0.35), transparent),
+      radial-gradient(1px 1px at 40% 80%, rgba(233, 240, 251, 0.3), transparent),
+      radial-gradient(1.5px 1.5px at 85% 20%, rgba(79, 216, 238, 0.35), transparent),
+      radial-gradient(1px 1px at 15% 70%, rgba(233, 240, 251, 0.3), transparent),
+      radial-gradient(1px 1px at 55% 15%, rgba(233, 240, 251, 0.25), transparent);
+    background-repeat: repeat;
+    background-size: 480px 480px;
+    opacity: 0.7;
+  }
+
+  /* A very subtle radial vignette that lifts the center and darkens edges. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(
+      circle at 50% 12%,
+      rgba(76, 134, 245, 0.08),
+      transparent 55%
+    );
+    pointer-events: none;
+  }
+
+  ::selection {
+    background: rgba(79, 216, 238, 0.25);
+    color: #fff;
+  }
+
+  /* Visible keyboard focus everywhere (accessibility floor). */
+  :focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  /* Centered content column. */
+  .wrap {
+    width: 100%;
+    max-width: var(--content, 1200px);
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+
+  /* Mono eyebrow label used above section headings (e.g. "02 / CAPABILITIES"). */
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--cyan-dim);
+  }
+
+  /* Hairline divider. */
+  .hairline {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--line-bright),
+      transparent
+    );
+  }
+
+  /* Raised technical panel. */
+  .panel {
+    background: linear-gradient(180deg, var(--raised), var(--panel));
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+
+  /* Primary CTA button. */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.82rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--void);
+    background: var(--cyan);
+    border: 1px solid var(--cyan);
+    padding: 0.85rem 1.5rem;
+    border-radius: 10px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    box-shadow: 0 0 0 rgba(79, 216, 238, 0);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    background: #6fe6f7;
+    box-shadow: 0 8px 30px rgba(79, 216, 238, 0.25);
+  }
+
+  /* Ghost / secondary button. */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.82rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--line-bright);
+    padding: 0.85rem 1.4rem;
+    border-radius: 10px;
+    transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  }
+  .btn-ghost:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(79, 216, 238, 0.06);
+  }
+
+  /* Technical grid overlay used behind conceptual "imagery" visuals. */
+  .grid-overlay {
+    background-image:
+      linear-gradient(rgba(79, 216, 238, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79, 216, 238, 0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Animations. All wrapped so prefers-reduced-motion disables them.
+   -------------------------------------------------------------------------- */
+@keyframes scan-sweep {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(1100%); opacity: 0; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.scan-line {
+  animation: scan-sweep 3.2s ease-in-out infinite;
+}
+.pulse-dot {
+  animation: pulse-dot 2.2s ease-in-out infinite;
+}
+.spin-slow {
+  animation: spin-slow 60s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .scan-line,
+  .pulse-dot,
+  .spin-slow {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Custom scrollbar to match the instrument aesthetic. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-bright);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cyan-dim);
+}

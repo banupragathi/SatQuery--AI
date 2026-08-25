@@ -1,0 +1,25 @@
+# --- Node / frontend ---
+node_modules/
+dist/
+.vite/
+*.local
+
+# --- Python / backend ---
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# --- Uploaded images (runtime only) ---
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# --- Environment / secrets ---
+.env
+.env.*
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
