@@ -18,6 +18,7 @@ Run it with:
     uvicorn main:app --reload
 (the dev server will listen on http://localhost:8000)
 """
+from __future__ import annotations
 
 import os
 import uuid
@@ -47,6 +48,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
         "http://localhost:4173",  # vite preview (production build preview)
     ],
     allow_methods=["*"],

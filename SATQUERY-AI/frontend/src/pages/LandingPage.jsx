@@ -1,5 +1,6 @@
 import Navbar from "../components/landing/Navbar.jsx";
 import Hero from "../components/landing/Hero.jsx";
+import Starfield from "../components/landing/Starfield.jsx";
 import BigIdea from "../components/landing/BigIdea.jsx";
 import HowItWorks from "../components/landing/HowItWorks.jsx";
 import Capabilities from "../components/landing/Capabilities.jsx";
@@ -16,9 +17,10 @@ import Footer from "../components/landing/Footer.jsx";
 */
 export default function LandingPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative" style={{ background: "#050810" }}>
+      <Starfield />
       <Navbar />
-      <main>
+      <main className="relative z-10">
         <Hero />
         <BigIdea />
         <HowItWorks />

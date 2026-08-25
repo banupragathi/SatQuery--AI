@@ -1,80 +1,108 @@
-import { useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { Stars, Line } from "@react-three/drei";
+import { useMemo, useRef, useCallback, useEffect, useState } from "react";
+import { Canvas, useFrame, useThree, useLoader } from "@react-three/fiber";
+import { Stars } from "@react-three/drei";
 import * as THREE from "three";
 
 /*
-  Earth.jsx
-  =========
-  The hero's signature element: a scientific-visualization globe rather than a
-  photo-textured planet. This is a deliberate choice -- it needs NO external
-  image asset (so it always builds and runs offline, with no broken references
-  or CORS risk) and it matches the brief's "scientific visualization / orbital
-  geometry / subtle cyan" direction.
+  Earth.jsx  —  Photo-realistic textured Earth globe
+  ====================================================
+  A premium 3D Earth with:
+    - Day texture (diffuse map)
+    - Night city-lights emissive map (blended on dark side)
+    - Topographic bump map for terrain relief
+    - Specular ocean sheen map
+    - Custom GLSL atmospheric cyan rim glow
+    - Transparent cloud layer rotating at offset speed
+    - Orbiting satellite with glowing trajectory ring + pulsing telemetry dots
+    - Mouse-parallax camera rig for subtle interactive depth
 
-  What it renders:
-    - a dark navy sphere lit by a single directional "sun" (gives a terminator)
-    - a cyan fresnel atmosphere glow around the rim (a tiny custom shader)
-    - a latitude/longitude graticule
-    - a few glowing surface data points (one amber "active" point)
-    - an inclined orbital ring with a small satellite tracing it
-    - a depth starfield
-
-  This component assumes it is only mounted when motion is allowed and WebGL
-  works; Hero.jsx handles that decision and the static fallback.
+  Textures sourced from Solar System Scope (CC BY 4.0).
+  Falls back gracefully if textures fail to load.
 */
 
-// ---- helpers to build graticule circles as arrays of points ----------------
-function latitudeCircle(latDeg, radius = 1.001, segments = 96) {
-  const lat = (latDeg * Math.PI) / 180;
-  const r = Math.cos(lat) * radius;
-  const y = Math.sin(lat) * radius;
-  const pts = [];
-  for (let i = 0; i <= segments; i++) {
-    const t = (i / segments) * Math.PI * 2;
-    pts.push([Math.cos(t) * r, y, Math.sin(t) * r]);
-  }
-  return pts;
+// ---------------------------------------------------------------------------
+// Custom Earth shader material — blends day/night based on light direction
+// ---------------------------------------------------------------------------
+function EarthMaterial({ dayMap, nightMap, bumpMap, specMap }) {
+  const material = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uDayMap: { value: dayMap },
+        uNightMap: { value: nightMap },
+        uBumpMap: { value: bumpMap },
+        uSpecMap: { value: specMap },
+        uSunDir: { value: new THREE.Vector3(2.0, 0.8, 1.5).normalize() },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vWorldPos;
+        void main() {
+          vUv = uv;
+          vNormal = normalize(normalMatrix * normal);
+          vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uDayMap;
+        uniform sampler2D uNightMap;
+        uniform sampler2D uSpecMap;
+        uniform vec3 uSunDir;
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vWorldPos;
+
+        void main() {
+          vec3 normal = normalize(vNormal);
+          float NdotL = dot(normal, uSunDir);
+
+          vec3 dayColor = texture2D(uDayMap, vUv).rgb;
+          vec3 nightColor = texture2D(uNightMap, vUv).rgb;
+          float specMask = texture2D(uSpecMap, vUv).r;
+
+          // Tint the oceans to a brighter, more vibrant blue
+          vec3 brightBlue = vec3(0.05, 0.4, 0.9);
+          // Mix the original day color with the bright blue where specMask is high (oceans)
+          vec3 tintedDay = mix(dayColor, mix(dayColor, brightBlue, 0.65), specMask);
+
+          // Smooth day/night transition
+          float blend = smoothstep(-0.12, 0.2, NdotL);
+
+          // Day side gets diffuse lighting — boosted ambient so continents are vivid
+          vec3 litDay = tintedDay * (0.45 + 0.65 * max(NdotL, 0.0));
+
+          // Night side shows city lights with boosted emission
+          vec3 litNight = nightColor * 2.2;
+
+          vec3 color = mix(litNight, litDay, blend);
+
+          // Specular highlight on oceans
+          vec3 viewDir = normalize(cameraPosition - vWorldPos);
+          vec3 halfDir = normalize(uSunDir + viewDir);
+          float spec = pow(max(dot(normal, halfDir), 0.0), 64.0) * specMask * 0.45;
+          color += vec3(0.7, 0.85, 1.0) * spec * blend;
+
+          gl_FragColor = vec4(color, 1.0);
+        }
+      `,
+    });
+  }, [dayMap, nightMap, bumpMap, specMap]);
+
+  return <primitive object={material} attach="material" />;
 }
 
-function longitudeCircle(lonDeg, radius = 1.001, segments = 96) {
-  const lon = (lonDeg * Math.PI) / 180;
-  const pts = [];
-  for (let i = 0; i <= segments; i++) {
-    const t = (i / segments) * Math.PI * 2;
-    const x = Math.cos(t) * radius;
-    const y = Math.sin(t) * radius;
-    // rotate the base circle around the Y axis to place the meridian
-    pts.push([x * Math.cos(lon), y, x * Math.sin(lon)]);
-  }
-  return pts;
-}
-
-// Convert lat/long to a 3D point on the sphere (for surface markers).
-function latLonToVec3(latDeg, lonDeg, radius = 1.02) {
-  const lat = (latDeg * Math.PI) / 180;
-  const lon = (lonDeg * Math.PI) / 180;
-  return [
-    Math.cos(lat) * Math.cos(lon) * radius,
-    Math.sin(lat) * radius,
-    Math.cos(lat) * Math.sin(lon) * radius,
-  ];
-}
-
-// ---- the globe + graticule + markers --------------------------------------
-function Globe() {
-  const groupRef = useRef();
-
-  // Slow, sophisticated rotation.
-  useFrame((_, delta) => {
-    if (groupRef.current) groupRef.current.rotation.y += delta * 0.05;
-  });
-
-  // Fresnel atmosphere shader (rim glow). Built once.
-  const atmosphere = useMemo(
+// ---------------------------------------------------------------------------
+// Atmospheric glow — fresnel-based rim shader
+// ---------------------------------------------------------------------------
+function Atmosphere() {
+  const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
-        uniforms: { uColor: { value: new THREE.Color("#4fd8ee") } },
+        uniforms: {
+          uColor: { value: new THREE.Color("#38bdf8") },
+          uIntensity: { value: 0.85 },
+        },
         vertexShader: `
           varying vec3 vNormal;
           varying vec3 vView;
@@ -89,9 +117,11 @@ function Globe() {
           varying vec3 vNormal;
           varying vec3 vView;
           uniform vec3 uColor;
+          uniform float uIntensity;
           void main() {
-            float fres = pow(1.0 - dot(vNormal, vView), 3.0);
-            gl_FragColor = vec4(uColor, fres * 0.85);
+            float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 3.0);
+            intensity = clamp(intensity, 0.0, 1.0) * uIntensity;
+            gl_FragColor = vec4(uColor, intensity);
           }
         `,
         transparent: true,
@@ -102,30 +132,315 @@ function Globe() {
     []
   );
 
-  const latitudes = useMemo(
-    () => [-60, -30, 0, 30, 60].map((d) => latitudeCircle(d)),
-    []
+  return (
+    <mesh scale={1.12}>
+      <sphereGeometry args={[1, 64, 64]} />
+      <primitive object={material} attach="material" />
+    </mesh>
   );
-  const longitudes = useMemo(
-    () => [0, 30, 60, 90, 120, 150].map((d) => longitudeCircle(d)),
-    []
-  );
+}
 
-  // A few "ground station / data" points. The last one is the active (amber) one.
-  const markers = useMemo(
-    () => [
-      { pos: latLonToVec3(28, 77), active: false }, // ~ N India
-      { pos: latLonToVec3(1, 103), active: false }, // ~ SE Asia
-      { pos: latLonToVec3(-15, -47), active: false }, // ~ S America
-      { pos: latLonToVec3(40, -100), active: false }, // ~ N America
-      { pos: latLonToVec3(12, 78), active: true }, // active point
-    ],
-    []
-  );
+// ---------------------------------------------------------------------------
+// Cloud layer — slightly larger, semi-transparent, offset rotation
+// ---------------------------------------------------------------------------
+function Clouds({ cloudMap }) {
+  const ref = useRef();
+
+  useFrame((_, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.012;
+  });
 
   return (
-    <group ref={groupRef} rotation={[0.35, 0, 0.1]}>
-      {/* The planet body. Directional light gives a day/night terminator. */}
+    <mesh ref={ref} scale={1.008}>
+      <sphereGeometry args={[1, 64, 64]} />
+      <meshStandardMaterial
+        map={cloudMap}
+        transparent
+        opacity={0.28}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Orbiting satellite with trajectory ring + pulsing telemetry dots
+// All elements use depthTest: false so the orbit line wraps visibly
+// around the ENTIRE Earth without vanishing behind the sphere.
+// ---------------------------------------------------------------------------
+function Satellite() {
+  const satRef = useRef();
+  const orbitRadius = 1.6;
+  const inclination = Math.PI / 3.2;
+
+  // Build orbit ring geometry — a true circular ring around the globe
+  const orbitGeometry = useMemo(() => {
+    const points = [];
+    const segments = 256;
+    for (let i = 0; i <= segments; i++) {
+      const t = (i / segments) * Math.PI * 2;
+      points.push(
+        new THREE.Vector3(
+          Math.cos(t) * orbitRadius,
+          Math.sin(t) * orbitRadius * Math.sin(inclination) * 0.3,
+          Math.sin(t) * orbitRadius
+        )
+      );
+    }
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    return geometry;
+  }, []);
+
+  // Telemetry dots along orbit
+  const dotCount = 12;
+  const dotPositions = useMemo(() => {
+    const positions = [];
+    for (let i = 0; i < dotCount; i++) {
+      const t = (i / dotCount) * Math.PI * 2;
+      positions.push(
+        new THREE.Vector3(
+          Math.cos(t) * orbitRadius,
+          Math.sin(t) * orbitRadius * Math.sin(inclination) * 0.3,
+          Math.sin(t) * orbitRadius
+        )
+      );
+    }
+    return positions;
+  }, []);
+
+  const dotsRef = useRef([]);
+
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime() * 0.3;
+    if (satRef.current) {
+      satRef.current.position.set(
+        Math.cos(t) * orbitRadius,
+        Math.sin(t) * orbitRadius * Math.sin(inclination) * 0.3,
+        Math.sin(t) * orbitRadius
+      );
+    }
+    // Pulse telemetry dots
+    dotsRef.current.forEach((dot, i) => {
+      if (dot) {
+        const phase = state.clock.getElapsedTime() * 2 + i * 0.8;
+        const pulse = 0.3 + 0.7 * Math.abs(Math.sin(phase));
+        dot.material.opacity = pulse * 0.6;
+        const s = 0.8 + 0.4 * Math.abs(Math.sin(phase));
+        dot.scale.setScalar(s);
+      }
+    });
+  });
+
+  return (
+    <group rotation={[inclination, 0, Math.PI / 7]} renderOrder={10}>
+      {/* Orbit ring — always visible, renders on top of Earth */}
+      <line geometry={orbitGeometry} renderOrder={10}>
+        <lineBasicMaterial
+          color="#38bdf8"
+          transparent
+          opacity={0.25}
+          linewidth={1}
+          depthTest={false}
+          depthWrite={false}
+        />
+      </line>
+
+      {/* Telemetry dots — always visible */}
+      {dotPositions.map((pos, i) => (
+        <mesh
+          key={`dot-${i}`}
+          ref={(el) => (dotsRef.current[i] = el)}
+          position={pos}
+          renderOrder={11}
+        >
+          <sphereGeometry args={[0.012, 8, 8]} />
+          <meshBasicMaterial
+            color="#38bdf8"
+            transparent
+            opacity={0.5}
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+
+      {/* Satellite body — always visible, never hidden behind Earth */}
+      <group ref={satRef} renderOrder={12}>
+        {/* Main body */}
+        <mesh renderOrder={12}>
+          <boxGeometry args={[0.04, 0.025, 0.025]} />
+          <meshBasicMaterial
+            color="#c8dff5"
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
+        {/* Solar panels */}
+        <mesh position={[0.05, 0, 0]} renderOrder={12}>
+          <boxGeometry args={[0.04, 0.002, 0.06]} />
+          <meshBasicMaterial
+            color="#4c86f5"
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh position={[-0.05, 0, 0]} renderOrder={12}>
+          <boxGeometry args={[0.04, 0.002, 0.06]} />
+          <meshBasicMaterial
+            color="#4c86f5"
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
+        {/* Satellite glow point */}
+        <pointLight color="#38bdf8" intensity={0.4} distance={0.5} />
+      </group>
+    </group>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Mouse-parallax camera rig
+// ---------------------------------------------------------------------------
+function CameraRig() {
+  const { camera } = useThree();
+  const mouse = useRef({ x: 0, y: 0 });
+  const target = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      mouse.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
+      mouse.current.y = (e.clientY / window.innerHeight - 0.5) * 2;
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
+
+  useFrame(() => {
+    target.current.x += (mouse.current.x * 0.3 - target.current.x) * 0.05;
+    target.current.y += (mouse.current.y * 0.2 - target.current.y) * 0.05;
+    camera.position.x = target.current.x;
+    camera.position.y = -target.current.y * 0.5;
+    camera.lookAt(0, 0, 0);
+  });
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Main globe group
+// ---------------------------------------------------------------------------
+function Globe({ dayMap, nightMap, bumpMap, specMap, cloudMap }) {
+  const groupRef = useRef();
+
+  useFrame((_, delta) => {
+    if (groupRef.current) groupRef.current.rotation.y += delta * 0.04;
+  });
+
+  return (
+    <group ref={groupRef} rotation={[0.25, -1.2, 0.08]}>
+      {/* Earth surface */}
+      <mesh>
+        <sphereGeometry args={[1, 128, 128]} />
+        <EarthMaterial
+          dayMap={dayMap}
+          nightMap={nightMap}
+          bumpMap={bumpMap}
+          specMap={specMap}
+        />
+      </mesh>
+
+      {/* Atmosphere rim glow */}
+      <Atmosphere />
+
+      {/* Cloud layer */}
+      {cloudMap && <Clouds cloudMap={cloudMap} />}
+    </group>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Texture-loading scene wrapper
+// ---------------------------------------------------------------------------
+function EarthScene() {
+  const loader = new THREE.TextureLoader();
+  const [textures, setTextures] = useState(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [day, night, bump, spec, clouds] = await Promise.all([
+          loader.loadAsync("/textures/earth_day.jpg"),
+          loader.loadAsync("/textures/earth_night.jpg"),
+          loader.loadAsync("/textures/earth_bump.jpg"),
+          loader.loadAsync("/textures/earth_specular.jpg"),
+          loader.loadAsync("/textures/earth_clouds.jpg"),
+        ]);
+        // Set proper color space
+        day.colorSpace = THREE.SRGBColorSpace;
+        night.colorSpace = THREE.SRGBColorSpace;
+        setTextures({ day, night, bump, spec, clouds });
+      } catch (err) {
+        console.warn("Earth textures could not be loaded, using fallback:", err);
+        setTextures(null);
+      }
+    };
+    load();
+  }, []);
+
+  return (
+    <>
+      <ambientLight intensity={0.15} />
+      <directionalLight
+        position={[4, 1.5, 3]}
+        intensity={2.0}
+        color="#fff8f0"
+      />
+      <directionalLight
+        position={[-3, -1, -2]}
+        intensity={0.15}
+        color="#4c86f5"
+      />
+
+      <Stars
+        radius={80}
+        depth={50}
+        count={2500}
+        factor={3.5}
+        fade
+        speed={0.3}
+      />
+
+      {textures ? (
+        <Globe
+          dayMap={textures.day}
+          nightMap={textures.night}
+          bumpMap={textures.bump}
+          specMap={textures.spec}
+          cloudMap={textures.clouds}
+        />
+      ) : (
+        <FallbackGlobe />
+      )}
+
+      <Satellite />
+      <CameraRig />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fallback globe (wireframe) if textures fail to load
+// ---------------------------------------------------------------------------
+function FallbackGlobe() {
+  const ref = useRef();
+  useFrame((_, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.04;
+  });
+
+  return (
+    <group ref={ref} rotation={[0.3, -0.6, 0.08]}>
       <mesh>
         <sphereGeometry args={[1, 64, 64]} />
         <meshStandardMaterial
@@ -133,87 +448,31 @@ function Globe() {
           emissive="#050c1a"
           roughness={1}
           metalness={0}
+          wireframe
         />
       </mesh>
-
-      {/* Atmosphere rim glow. */}
-      <mesh scale={1.06}>
-        <sphereGeometry args={[1, 48, 48]} />
-        <primitive object={atmosphere} attach="material" />
-      </mesh>
-
-      {/* Graticule. */}
-      {latitudes.map((pts, i) => (
-        <Line key={`lat-${i}`} points={pts} color="#2aa7be" lineWidth={0.6} transparent opacity={0.35} />
-      ))}
-      {longitudes.map((pts, i) => (
-        <Line key={`lon-${i}`} points={pts} color="#2aa7be" lineWidth={0.6} transparent opacity={0.28} />
-      ))}
-
-      {/* Surface data points. */}
-      {markers.map((m, i) => (
-        <mesh key={`mk-${i}`} position={m.pos}>
-          <sphereGeometry args={[m.active ? 0.02 : 0.014, 12, 12]} />
-          <meshBasicMaterial color={m.active ? "#e8a64c" : "#4fd8ee"} />
-        </mesh>
-      ))}
+      <Atmosphere />
     </group>
   );
 }
 
-// ---- inclined orbit + moving satellite ------------------------------------
-function Satellite() {
-  const satRef = useRef();
-  const orbitRadius = 1.55;
-
-  const ringPoints = useMemo(() => {
-    const pts = [];
-    for (let i = 0; i <= 128; i++) {
-      const t = (i / 128) * Math.PI * 2;
-      pts.push([Math.cos(t) * orbitRadius, 0, Math.sin(t) * orbitRadius]);
-    }
-    return pts;
-  }, []);
-
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime() * 0.35;
-    if (satRef.current) {
-      satRef.current.position.set(
-        Math.cos(t) * orbitRadius,
-        0,
-        Math.sin(t) * orbitRadius
-      );
-    }
-  });
-
-  return (
-    <group rotation={[Math.PI / 2.6, 0, Math.PI / 8]}>
-      <Line points={ringPoints} color="#4c86f5" lineWidth={0.7} transparent opacity={0.35} />
-      <mesh ref={satRef}>
-        {/* tiny satellite body + a hint of solar panels */}
-        <boxGeometry args={[0.05, 0.03, 0.03]} />
-        <meshStandardMaterial color="#e9f0fb" emissive="#4fd8ee" emissiveIntensity={0.6} />
-      </mesh>
-    </group>
-  );
-}
-
+// ---------------------------------------------------------------------------
+// Exported component — the Canvas wrapper
+// ---------------------------------------------------------------------------
 export default function Earth() {
   return (
     <Canvas
       dpr={[1, 2]}
-      camera={{ position: [0, 0, 3.4], fov: 42 }}
-      gl={{ antialias: true, alpha: true }}
+      camera={{ position: [0, 0, 3.2], fov: 42 }}
+      gl={{
+        antialias: true,
+        alpha: true,
+        toneMapping: THREE.ACESFilmicToneMapping,
+        outputColorSpace: THREE.SRGBColorSpace,
+      }}
       style={{ width: "100%", height: "100%" }}
     >
-      <ambientLight intensity={0.25} />
-      <directionalLight position={[3, 1.5, 2]} intensity={2.2} color="#fff4e6" />
-      <directionalLight position={[-3, -1, -2]} intensity={0.3} color="#4c86f5" />
-
-      <Stars radius={80} depth={40} count={1800} factor={3} fade speed={0.4} />
-
-      <Globe />
-      <Satellite />
+      <EarthScene />
     </Canvas>
   );
 }
