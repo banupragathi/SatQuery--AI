@@ -1,4 +1,4 @@
-import Reveal from "../shared/Reveal.jsx";
+import Reveal, { RevealStagger, RevealItem } from "../shared/Reveal.jsx";
 
 /*
   Multimodal.jsx
@@ -24,9 +24,9 @@ export default function Multimodal() {
           </p>
         </Reveal>
 
-        <Reveal delay={0.1}>
-          <div className="mt-14 grid items-center gap-6 lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
-            {/* Optical channel */}
+        <RevealStagger className="mt-14 grid items-center gap-6 lg:grid-cols-[1fr_auto_1fr_auto_1fr]" staggerDelay={0.12}>
+          {/* Optical channel */}
+          <RevealItem>
             <Channel
               tag="Optical"
               tone="cyan"
@@ -47,10 +47,14 @@ export default function Multimodal() {
                 </>
               }
             />
+          </RevealItem>
 
+          <RevealItem>
             <Operator symbol="+" />
+          </RevealItem>
 
-            {/* SAR channel */}
+          {/* SAR channel */}
+          <RevealItem>
             <Channel
               tag="SAR"
               tone="amber"
@@ -73,10 +77,14 @@ export default function Multimodal() {
                 </>
               }
             />
+          </RevealItem>
 
+          <RevealItem>
             <Operator symbol="→" />
+          </RevealItem>
 
-            {/* Combined insight */}
+          {/* Combined insight */}
+          <RevealItem>
             <Channel
               tag="Combined"
               tone="mixed"
@@ -93,12 +101,13 @@ export default function Multimodal() {
                 </>
               }
             />
-          </div>
-        </Reveal>
+          </RevealItem>
+        </RevealStagger>
       </div>
     </section>
   );
 }
+
 
 function Channel({ tag, caption, tone, svg }) {
   const tagColor =

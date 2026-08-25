@@ -23,6 +23,12 @@ from __future__ import annotations
 import os
 import uuid
 
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(name)s  %(levelname)s  %(message)s",
+)
+
 from dotenv import load_dotenv
 load_dotenv()  # reads backend/.env so GEMINI_API_KEY is available
 

@@ -73,6 +73,37 @@ export default function Workspace() {
     setPhase("ready");
   };
 
+  const handleSelectSample = async (path, filename) => {
+    setUploadError(null);
+    setUploading(true);
+
+    try {
+      const response = await fetch(path);
+      const blob = await response.blob();
+      const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
+
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      setTiff(isTiffFile(file));
+
+      const res = await uploadImage(file);
+      setUploading(false);
+
+      if (!res.ok) {
+        setUploadError(res.error);
+        setPreviewUrl(null);
+        setTiff(false);
+        return;
+      }
+      setUploadMeta(res.data);
+      setPhase("ready");
+    } catch (err) {
+      setUploading(false);
+      setUploadError("Failed to load sample image: " + err.message);
+    }
+  };
+
   const handleReset = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPhase("idle");
@@ -136,7 +167,12 @@ export default function Workspace() {
           {/* LEFT: input column */}
           <div className="space-y-6">
             {phase === "idle" ? (
-              <ImageUpload onFile={handleFile} disabled={uploading} error={uploadError} />
+              <ImageUpload
+                onFile={handleFile}
+                onSelectSample={handleSelectSample}
+                disabled={uploading}
+                error={uploadError}
+              />
             ) : (
               <>
                 <ImagePreview

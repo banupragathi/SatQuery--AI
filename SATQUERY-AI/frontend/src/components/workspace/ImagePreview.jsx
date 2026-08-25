@@ -32,8 +32,8 @@ export default function ImagePreview({ meta, previewUrl, isTiff, onRemove, groun
 
   return (
     <div className="panel overflow-hidden">
-      <div className="relative aspect-[16/10] w-full bg-deep">
-        {isTiff || !previewUrl ? (
+      {isTiff || !previewUrl ? (
+        <div className="relative aspect-[16/10] w-full bg-deep">
           <div className="grid-overlay flex h-full w-full flex-col items-center justify-center text-center">
             <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
               <rect x="6" y="4" width="28" height="32" rx="3" stroke="#2a3b5c" />
@@ -44,43 +44,52 @@ export default function ImagePreview({ meta, previewUrl, isTiff, onRemove, groun
             </p>
             <p className="mt-1 text-xs text-muted">Metadata read successfully</p>
           </div>
-        ) : (
+          <button
+            onClick={onRemove}
+            className="absolute right-3 top-3 rounded-md border border-lineBright bg-void/80 px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted backdrop-blur transition-colors hover:border-amber hover:text-amber"
+            aria-label="Remove image"
+          >
+            Remove
+          </button>
+        </div>
+      ) : (
+        <div className="relative w-full bg-deep overflow-hidden">
           <img
             src={previewUrl}
             alt={`Uploaded satellite image: ${meta?.filename || "scene"}`}
-            className="h-full w-full object-cover"
+            className="w-full h-auto block"
           />
-        )}
 
-        {/* Grounding bounding box overlay (only when a box exists) */}
-        {showBox && (
-          <div
-            className="pointer-events-none absolute rounded-sm"
-            style={{
-              left: `${box.x * 100}%`,
-              top: `${box.y * 100}%`,
-              width: `${box.w * 100}%`,
-              height: `${box.h * 100}%`,
-              border: "2px solid #4FD8EE",
-              boxShadow: "0 0 0 1px rgba(5,7,13,0.6), 0 0 12px rgba(79,216,238,0.5)",
-            }}
-          >
-            <span
-              className="absolute -top-6 left-0 whitespace-nowrap rounded bg-cyan px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-void"
+          {/* Grounding bounding box overlay (only when a box exists) */}
+          {showBox && (
+            <div
+              className="pointer-events-none absolute rounded-sm"
+              style={{
+                left: `${box.x * 100}%`,
+                top: `${box.y * 100}%`,
+                width: `${box.w * 100}%`,
+                height: `${box.h * 100}%`,
+                border: "2px solid #4FD8EE",
+                boxShadow: "0 0 0 1px rgba(5,7,13,0.6), 0 0 12px rgba(79,216,238,0.5)",
+              }}
             >
-              {groundingBox?.label || "region"}
-            </span>
-          </div>
-        )}
+              <span
+                className="absolute -top-6 left-0 whitespace-nowrap rounded bg-cyan px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.14em] text-void"
+              >
+                {groundingBox?.label || "region"}
+              </span>
+            </div>
+          )}
 
-        <button
-          onClick={onRemove}
-          className="absolute right-3 top-3 rounded-md border border-lineBright bg-void/80 px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted backdrop-blur transition-colors hover:border-amber hover:text-amber"
-          aria-label="Remove image"
-        >
-          Remove
-        </button>
-      </div>
+          <button
+            onClick={onRemove}
+            className="absolute right-3 top-3 rounded-md border border-lineBright bg-void/80 px-3 py-1.5 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted backdrop-blur transition-colors hover:border-amber hover:text-amber"
+            aria-label="Remove image"
+          >
+            Remove
+          </button>
+        </div>
+      )}
 
       <dl className="grid grid-cols-2 gap-px bg-line">
         {rows.map((row) => (

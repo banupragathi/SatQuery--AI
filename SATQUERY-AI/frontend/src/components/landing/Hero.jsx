@@ -1,8 +1,9 @@
 import { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
-import { useReducedMotion } from "framer-motion";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import EarthFallback from "./EarthFallback.jsx";
 import ErrorBoundary from "../shared/ErrorBoundary.jsx";
+import { RevealStagger, RevealItem } from "../shared/Reveal.jsx";
 
 // The 3D Earth pulls in three.js, so we lazy-load it -- it is not in the
 // initial bundle's critical path.
@@ -21,6 +22,10 @@ const Earth = lazy(() => import("./Earth.jsx"));
 */
 export default function Hero() {
   const reduce = useReducedMotion();
+  const { scrollY } = useScroll();
+
+  // Subtle orbital scroll parallax for the 3D Earth scene
+  const earthParallaxY = useTransform(scrollY, [0, 800], [0, 45]);
 
   return (
     <section
@@ -31,113 +36,128 @@ export default function Hero() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-8 px-6 pb-20 pt-28 sm:pt-32 lg:grid-cols-2 lg:gap-12 lg:pb-28">
 
         {/* ── Left Column: Text & Controls ── */}
-        <div className="relative z-10 max-w-xl">
+        <RevealStagger className="relative z-10 max-w-xl" staggerDelay={0.08}>
           {/* Cyan sub-header */}
-          <p
-            className="mb-6 font-mono uppercase"
-            style={{
-              fontSize: "10px",
-              letterSpacing: "0.3em",
-              color: "#38bdf8",
-            }}
-          >
-            Multimodal remote-sensing intelligence
-          </p>
+          <RevealItem>
+            <p
+              className="mb-6 font-mono uppercase"
+              style={{
+                fontSize: "10px",
+                letterSpacing: "0.3em",
+                color: "#38bdf8",
+              }}
+            >
+              Multimodal remote-sensing intelligence
+            </p>
+          </RevealItem>
 
           {/* Main title */}
-          <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl">
-            SatQuery AI
-          </h1>
+          <RevealItem>
+            <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl">
+              SatQuery AI
+            </h1>
+          </RevealItem>
 
           {/* Sub-headline */}
-          <p className="mt-5 font-display text-2xl font-medium leading-tight text-white sm:text-3xl">
-            Turn satellite imagery
-            <br />
-            into{" "}
-            <span
-              style={{
-                background: "linear-gradient(135deg, #38bdf8 0%, #4c86f5 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-              }}
-            >
-              intelligence.
-            </span>
-          </p>
+          <RevealItem>
+            <p className="mt-5 font-display text-2xl font-medium leading-tight text-white sm:text-3xl">
+              Turn satellite imagery
+              <br />
+              into{" "}
+              <span
+                style={{
+                  background: "linear-gradient(135deg, #38bdf8 0%, #4c86f5 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                intelligence.
+              </span>
+            </p>
+          </RevealItem>
 
           {/* Description */}
-          <p
-            className="mt-6 max-w-md text-base leading-relaxed"
-            style={{ color: "rgba(255, 255, 255, 0.55)" }}
-          >
-            Ask questions in natural language. Explore satellite imagery.
-            Understand what Earth reveals.
-          </p>
+          <RevealItem>
+            <p
+              className="mt-6 max-w-md text-base leading-relaxed"
+              style={{ color: "rgba(255, 255, 255, 0.55)" }}
+            >
+              Ask questions in natural language. Explore satellite imagery.
+              Understand what Earth reveals.
+            </p>
+          </RevealItem>
 
           {/* Action buttons */}
-          <div className="mt-9 flex flex-wrap items-center gap-4">
-            <Link
-              to="/app"
-              id="hero-cta-primary"
-              className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 font-mono text-sm font-medium uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5"
-              style={{
-                background: "#38bdf8",
-                color: "#050810",
-                boxShadow: "0 0 25px rgba(56, 189, 248, 0.3)",
-                letterSpacing: "0.14em",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#5fcbfa";
-                e.currentTarget.style.boxShadow = "0 8px 40px rgba(56, 189, 248, 0.45)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#38bdf8";
-                e.currentTarget.style.boxShadow = "0 0 25px rgba(56, 189, 248, 0.3)";
-              }}
-            >
-              Try SatQuery AI
-              <span aria-hidden="true">→</span>
-            </Link>
-            <a
-              href="#how-it-works"
-              id="hero-cta-secondary"
-              className="inline-flex items-center gap-2 rounded-xl px-6 py-3.5 font-mono text-sm font-medium uppercase tracking-wider text-white transition-all duration-200 hover:border-cyan hover:text-cyan"
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-                letterSpacing: "0.14em",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#38bdf8";
-                e.currentTarget.style.color = "#38bdf8";
-                e.currentTarget.style.background = "rgba(56, 189, 248, 0.06)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                e.currentTarget.style.color = "#fff";
-                e.currentTarget.style.background = "transparent";
-              }}
-            >
-              How It Works
-            </a>
-          </div>
+          <RevealItem>
+            <div className="mt-9 flex flex-wrap items-center gap-4">
+              <Link
+                to="/app"
+                id="hero-cta-primary"
+                className="inline-flex items-center gap-2.5 rounded-xl px-7 py-3.5 font-mono text-sm font-medium uppercase tracking-wider transition-all duration-200 hover:-translate-y-0.5"
+                style={{
+                  background: "#38bdf8",
+                  color: "#050810",
+                  boxShadow: "0 0 25px rgba(56, 189, 248, 0.3)",
+                  letterSpacing: "0.14em",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#5fcbfa";
+                  e.currentTarget.style.boxShadow = "0 8px 40px rgba(56, 189, 248, 0.45)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#38bdf8";
+                  e.currentTarget.style.boxShadow = "0 0 25px rgba(56, 189, 248, 0.3)";
+                }}
+              >
+                Try SatQuery AI
+                <span aria-hidden="true">→</span>
+              </Link>
+              <a
+                href="#how-it-works"
+                id="hero-cta-secondary"
+                className="inline-flex items-center gap-2 rounded-xl px-6 py-3.5 font-mono text-sm font-medium uppercase tracking-wider text-white transition-all duration-200 hover:border-cyan hover:text-cyan"
+                style={{
+                  background: "transparent",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  letterSpacing: "0.14em",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#38bdf8";
+                  e.currentTarget.style.color = "#38bdf8";
+                  e.currentTarget.style.background = "rgba(56, 189, 248, 0.06)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                  e.currentTarget.style.color = "#fff";
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                How It Works
+              </a>
+            </div>
+          </RevealItem>
 
           {/* Sub-feature pills */}
-          <p
-            className="mt-8 font-mono text-xs uppercase"
-            style={{
-              letterSpacing: "0.24em",
-              color: "rgba(255, 255, 255, 0.28)",
-              fontSize: "0.68rem",
-            }}
-          >
-            Optical · SAR · VQA · Captioning · Change · Grounding
-          </p>
-        </div>
+          <RevealItem>
+            <p
+              className="mt-8 font-mono text-xs uppercase"
+              style={{
+                letterSpacing: "0.24em",
+                color: "rgba(255, 255, 255, 0.28)",
+                fontSize: "0.68rem",
+              }}
+            >
+              Optical · SAR · VQA · Captioning · Change · Grounding
+            </p>
+          </RevealItem>
+        </RevealStagger>
 
-        {/* ── Right Column: 3D Earth Scene ── */}
-        <div className="relative mx-auto w-full max-w-[600px]">
+        {/* ── Right Column: 3D Earth Scene with subtle scroll parallax ── */}
+        <motion.div
+          style={{ y: reduce ? 0 : earthParallaxY }}
+          className="relative mx-auto w-full max-w-[600px]"
+        >
           {/* Radial cyan background glow */}
           <div
             className="pointer-events-none absolute inset-0"
@@ -171,7 +191,7 @@ export default function Hero() {
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Bottom fade into the next section */}
@@ -184,3 +204,4 @@ export default function Hero() {
     </section>
   );
 }
+

@@ -1,4 +1,4 @@
-import Reveal from "../shared/Reveal.jsx";
+import Reveal, { RevealStagger, RevealItem } from "../shared/Reveal.jsx";
 
 /*
   Capabilities.jsx
@@ -127,11 +127,10 @@ export default function Capabilities() {
           </h2>
         </Reveal>
 
-        <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CARDS.map((card, i) => (
-            <Reveal
+        <RevealStagger className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" staggerDelay={0.08}>
+          {CARDS.map((card) => (
+            <RevealItem
               key={card.verb}
-              delay={i * 0.06}
               className={card.featured ? "sm:col-span-2 lg:col-span-2" : ""}
             >
               <article className="panel group h-full p-6 transition-transform duration-300 hover:-translate-y-1">
@@ -153,13 +152,14 @@ export default function Capabilities() {
 
                 <p className="text-sm leading-relaxed text-muted">{card.example}</p>
               </article>
-            </Reveal>
+            </RevealItem>
           ))}
-        </div>
+        </RevealStagger>
       </div>
     </section>
   );
 }
+
 
 function StatusTag({ status }) {
   const active = status === "Active";

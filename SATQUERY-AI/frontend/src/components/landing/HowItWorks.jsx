@@ -1,4 +1,4 @@
-import Reveal from "../shared/Reveal.jsx";
+import Reveal, { RevealStagger, RevealItem } from "../shared/Reveal.jsx";
 
 /*
   HowItWorks.jsx
@@ -57,9 +57,9 @@ export default function HowItWorks() {
           {/* Continuous dashed connecting line behind the cards (visible on lg screens) */}
           <div className="absolute top-[3.25rem] left-8 right-8 hidden h-[1px] border-t border-dashed border-cyan/20 lg:block" aria-hidden="true"></div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step, i) => (
-              <Reveal key={step.n} delay={i * 0.1}>
+          <RevealStagger className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" staggerDelay={0.1}>
+            {STEPS.map((step) => (
+              <RevealItem key={step.n}>
                 <div className="group relative h-full rounded-xl border border-line bg-panel/60 p-7 transition-all duration-300 hover:-translate-y-1 hover:border-cyan/40 hover:bg-cyan/[0.02] hover:shadow-[0_0_20px_rgba(56,189,248,0.05)] overflow-hidden">
                   
                   {/* Subtle geospatial grid background (visible on hover) */}
@@ -107,11 +107,12 @@ export default function HowItWorks() {
                   <div className="absolute bottom-0 right-0 h-3 w-3 border-b border-r border-cyan/0 transition-colors group-hover:border-cyan/50"></div>
 
                 </div>
-              </Reveal>
+              </RevealItem>
             ))}
-          </div>
+          </RevealStagger>
         </div>
       </div>
     </section>
   );
 }
+

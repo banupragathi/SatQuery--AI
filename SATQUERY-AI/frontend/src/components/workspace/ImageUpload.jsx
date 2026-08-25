@@ -12,7 +12,25 @@ import { useRef, useState } from "react";
 */
 const ACCEPT = ".png,.jpg,.jpeg,.tif,.tiff,image/png,image/jpeg,image/tiff";
 
-export default function ImageUpload({ onFile, disabled, error }) {
+const SAMPLES = [
+  {
+    name: "optical-hero.jpg",
+    label: "Urban Area (Optical)",
+    path: "/samples/optical-hero.jpg",
+  },
+  {
+    name: "optical-pair.jpg",
+    label: "Agricultural Fields",
+    path: "/samples/optical-pair.jpg",
+  },
+  {
+    name: "sar-pair.jpg",
+    label: "Coastal Sensor (SAR)",
+    path: "/samples/sar-pair.jpg",
+  }
+];
+
+export default function ImageUpload({ onFile, onSelectSample, disabled, error }) {
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
 
@@ -76,6 +94,47 @@ export default function ImageUpload({ onFile, disabled, error }) {
           onChange={(e) => pick(e.target.files?.[0])}
         />
       </div>
+
+      {onSelectSample && (
+        <div className="mt-6">
+          <p className="mb-3 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-cyanDim">
+            Or analyze a pre-loaded sample
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {SAMPLES.map((sample) => (
+              <button
+                key={sample.name}
+                type="button"
+                disabled={disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectSample(sample.path, sample.name);
+                }}
+                className="flex items-center gap-3 rounded-xl border border-lineBright bg-panel/30 p-2.5 text-left transition-colors hover:border-cyan/50 hover:bg-panel/60 disabled:pointer-events-none disabled:opacity-50"
+              >
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border border-line bg-deep">
+                  <img
+                    src={sample.path}
+                    alt={sample.label}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.76rem] font-medium text-ink truncate">
+                    {sample.label}
+                  </p>
+                  <p className="font-mono text-[0.52rem] text-faint uppercase tracking-wider mt-0.5">
+                    Click to load
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <p className="mt-3 flex items-center gap-2 text-sm text-amber" role="alert">

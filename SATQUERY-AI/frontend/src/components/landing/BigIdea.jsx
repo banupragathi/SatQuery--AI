@@ -1,4 +1,4 @@
-import Reveal from "../shared/Reveal.jsx";
+import Reveal, { RevealStagger, RevealItem } from "../shared/Reveal.jsx";
 
 /*
   BigIdea.jsx
@@ -10,10 +10,10 @@ import Reveal from "../shared/Reveal.jsx";
 */
 export default function BigIdea() {
   return (
-    <section className="relative py-24 sm:py-28">
+    <section id="the-idea" className="relative scroll-mt-20 py-24 sm:py-28">
       <div className="wrap grid items-center gap-14 lg:grid-cols-2">
         {/* Conceptual imagery panel */}
-        <Reveal>
+        <Reveal direction="up">
           <figure className="panel relative overflow-hidden p-3" aria-label="Conceptual satellite image with a detected water body">
             <div className="relative overflow-hidden rounded-lg">
               <svg viewBox="0 0 480 320" className="h-auto w-full">
@@ -84,31 +84,45 @@ export default function BigIdea() {
         </Reveal>
 
         {/* Idea + flow */}
-        <Reveal delay={0.1}>
+        <RevealStagger staggerDelay={0.09}>
           <div>
-            <p className="eyebrow mb-5">01 / The idea</p>
-            <h2 className="font-display text-3xl font-semibold leading-tight text-ink sm:text-4xl">
-              See more.
-              <br />
-              Ask better.
-              <br />
-              <span className="text-cyan">Understand Earth.</span>
-            </h2>
-            <p className="mt-6 max-w-md leading-relaxed text-muted">
-              Satellite imagery contains enormous amounts of information.
-              SatQuery makes that information accessible through simple
-              natural-language questions.
-            </p>
+            <RevealItem>
+              <p className="eyebrow mb-5">01 / The idea</p>
+            </RevealItem>
+            <RevealItem>
+              <h2 className="font-display text-3xl font-semibold leading-tight text-ink sm:text-4xl">
+                See more.
+                <br />
+                Ask better.
+                <br />
+                <span className="text-cyan">Understand Earth.</span>
+              </h2>
+            </RevealItem>
+            <RevealItem>
+              <p className="mt-6 max-w-md leading-relaxed text-muted">
+                Satellite imagery contains enormous amounts of information.
+                SatQuery makes that information accessible through simple
+                natural-language questions.
+              </p>
+            </RevealItem>
 
             {/* the flow */}
             <div className="mt-9 space-y-3">
-              <FlowRow label="Input" text="Satellite image" tone="muted" />
-              <FlowRow label="Question" text="“Is there a water body?”" tone="ink" />
-              <FlowRow label="SatQuery AI" text="Routes · analyses · answers" tone="cyan" />
-              <FlowRow label="Answer" text="Water body detected" tone="ink" bordered />
+              <RevealItem>
+                <FlowRow label="Input" text="Satellite image" tone="muted" />
+              </RevealItem>
+              <RevealItem>
+                <FlowRow label="Question" text="“Is there a water body?”" tone="ink" />
+              </RevealItem>
+              <RevealItem>
+                <FlowRow label="SatQuery AI" text="Routes · analyses · answers" tone="cyan" />
+              </RevealItem>
+              <RevealItem>
+                <FlowRow label="Answer" text="Water body detected" tone="ink" bordered />
+              </RevealItem>
             </div>
           </div>
-        </Reveal>
+        </RevealStagger>
       </div>
     </section>
   );
@@ -130,3 +144,4 @@ function FlowRow({ label, text, tone, bordered }) {
     </div>
   );
 }
+

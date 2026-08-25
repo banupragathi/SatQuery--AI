@@ -51,6 +51,15 @@ export default function Navbar() {
               <li key={link.href}>
                 <a
                   href={link.href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const targetId = link.href.startsWith("#") ? link.href.slice(1) : link.href;
+                    const element = document.getElementById(targetId);
+                    if (element) {
+                      element.scrollIntoView({ behavior: "smooth" });
+                      window.history.pushState(null, null, link.href);
+                    }
+                  }}
                   className="font-mono text-[0.72rem] uppercase tracking-[0.18em] text-muted transition-colors hover:text-cyan"
                 >
                   {link.label}

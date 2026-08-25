@@ -33,33 +33,63 @@ def _build_prompt(query: str) -> str:
 
 def _parse_box(raw_text: str) -> dict:
     cleaned = raw_text.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        if cleaned.lower().startswith("json"):
-            cleaned = cleaned[4:]
-    cleaned = cleaned.strip()
-
+    
     try:
         data = json.loads(cleaned)
     except Exception as e:
-        raise GeminiError(f"Could not parse grounding JSON: {e}") from e
+        import re
+        # Fallback 1: array format [ymin, xmin, ymax, xmax]
+        array_match = re.search(r'\[\s*([\d\.]+)\s*,\s*([\d\.]+)\s*,\s*([\d\.]+)\s*,\s*([\d\.]+)\s*\]', raw_text)
+        
+        # Fallback 2: key-value format like ymin=0, xmin=0, ymax=1000, xmax=650
+        kv_match = None
+        if not array_match:
+            try:
+                ymin = float(re.search(r'ymin\s*[=:]\s*([\d\.]+)', raw_text, re.IGNORECASE).group(1))
+                xmin = float(re.search(r'xmin\s*[=:]\s*([\d\.]+)', raw_text, re.IGNORECASE).group(1))
+                ymax = float(re.search(r'ymax\s*[=:]\s*([\d\.]+)', raw_text, re.IGNORECASE).group(1))
+                xmax = float(re.search(r'xmax\s*[=:]\s*([\d\.]+)', raw_text, re.IGNORECASE).group(1))
+                kv_match = [ymin, xmin, ymax, xmax]
+            except:
+                pass
 
-    found = bool(data.get("found", False))
-    label = str(data.get("label", "")).strip()
+        if array_match:
+            data = {"box_2d": [float(array_match.group(i)) for i in range(1, 5)], "found": True, "label": ""}
+        elif kv_match:
+            data = {"box_2d": kv_match, "found": True, "label": ""}
+        else:
+            raise GeminiError(f"Could not parse grounding JSON or regex. Raw response: {raw_text}") from e
+
+    box = data.get("box_2d") or data.get("box") or data.get("bounding_box") or data.get("bbox") or []
+    if not (isinstance(box, list) and len(box) == 4):
+        if isinstance(data, list) and len(data) == 4:
+            box = data
+        else:
+            raise GeminiError("Grounding box (box_2d/box/bbox) was not a list of 4 numbers.")
+
+    # If we found a valid 4-element box, we assume the object was successfully located
+    found = bool(data.get("found", False)) or (isinstance(box, list) and len(box) == 4)
+    label = str(data.get("label", "")) if isinstance(data, dict) else ""
+    label = label.strip()
 
     if not found:
         return {"found": False, "label": label, "box": None}
 
-    box = data.get("box_2d", [])
-    if not (isinstance(box, list) and len(box) == 4):
-        raise GeminiError("Grounding box_2d was not a list of 4 numbers.")
+    try:
+        ymin, xmin, ymax, xmax = [float(v) for v in box]
+    except Exception as e:
+        raise GeminiError(f"Grounding box_2d contains non-numeric values: {box} | Error: {e}") from e
 
-    ymin, xmin, ymax, xmax = box
-    x = min(xmin, xmax) / 1000.0
-    y = min(ymin, ymax) / 1000.0
-    w = abs(xmax - xmin) / 1000.0
-    h = abs(ymax - ymin) / 1000.0
+    # Dynamically support both 0..1 normalized range and 0..1000 pixel-grid range models
+    is_normalized_to_one = all(0.0 <= v <= 1.0 for v in [ymin, xmin, ymax, xmax])
+    scale = 1.0 if is_normalized_to_one else 1000.0
 
+    x = min(xmin, xmax) / scale
+    y = min(ymin, ymax) / scale
+    w = abs(xmax - xmin) / scale
+    h = abs(ymax - ymin) / scale
+
+    # Keep layout boundaries relative within the viewport
     x = max(0.0, min(1.0, x))
     y = max(0.0, min(1.0, y))
     w = max(0.0, min(1.0 - x, w))
