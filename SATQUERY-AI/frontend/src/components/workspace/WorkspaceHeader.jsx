@@ -31,11 +31,9 @@ export default function WorkspaceHeader({ onReset }) {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-void/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-3.5 sm:px-8">
-        <Link to="/" className="flex items-baseline gap-3" aria-label="Back to SatQuery AI home">
-          <span className="font-display text-base font-semibold tracking-wide text-ink">
-            SATQUERY<span className="text-cyan"> AI</span>
-          </span>
-          <span className="hidden font-mono text-[0.58rem] uppercase tracking-[0.26em] text-faint sm:inline">
+        <Link to="/" className="flex items-center gap-3 sm:gap-4" aria-label="Back to SatQuery AI home">
+          <img src="/logo.png" alt="SatQuery AI Logo" className="h-5 sm:h-7 w-auto object-contain" />
+          <span className="hidden font-mono text-[0.58rem] sm:text-[0.62rem] uppercase tracking-[0.26em] text-faint sm:inline">
             Remote Sensing Intelligence
           </span>
         </Link>

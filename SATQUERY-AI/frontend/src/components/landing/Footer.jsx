@@ -16,9 +16,7 @@ export default function Footer() {
     <footer className="border-t border-line bg-deep/60">
       <div className="wrap flex flex-col gap-8 py-14 sm:flex-row sm:items-start sm:justify-between">
         <div className="max-w-sm">
-          <div className="font-display text-lg font-semibold tracking-wide text-ink">
-            SATQUERY<span className="text-cyan"> AI</span>
-          </div>
+          <img src="/logo.png" alt="SatQuery AI Logo" className="h-7 sm:h-9 w-auto object-contain mb-4" />
           <p className="mt-3 text-sm leading-relaxed text-muted">
             Interactive vision-language assistant for multimodal remote-sensing
             analysis.

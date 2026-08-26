@@ -52,6 +52,9 @@ export default function ScanningState({ onComplete, previewUrl, isTiff }) {
 
   return (
     <div className="panel p-7">
+      <div className="mb-6 flex justify-center">
+        <img src="/logo.png" alt="SatQuery AI Logo" className="h-6 sm:h-8 w-auto object-contain" />
+      </div>
             {/* mini scanning visual — shows the actual uploaded image being scanned */}
       <div className="relative mb-7 h-40 overflow-hidden rounded-lg border border-line bg-deep grid-overlay">
         {/* the real uploaded scene, dimmed so the scan line + text stay readable */}

@@ -7,18 +7,6 @@ import ScanningState from "../components/workspace/ScanningState.jsx";
 import ResultPanel from "../components/workspace/ResultPanel.jsx";
 import { uploadImage, analyzeImage } from "../services/api.js";
 
-/*
-  Workspace.jsx
-  =============
-  The heart of /app. It owns the flow state and coordinates the components:
-
-      idle  ->  (upload succeeds)  ->  ready
-      ready ->  (analyse clicked)  ->  analyzing  ->  done
-
-  The result is only revealed once BOTH the real /analyze response has arrived
-  AND the scanning animation has finished, so the pacing feels intentional
-  without ever faking the outcome.
-*/
 function isTiffFile(file) {
   const name = (file?.name || "").toLowerCase();
   return name.endsWith(".tif") || name.endsWith(".tiff") || file?.type === "image/tiff";
@@ -27,99 +15,58 @@ function isTiffFile(file) {
 export default function Workspace() {
   const [phase, setPhase] = useState("idle"); // idle | ready | analyzing | done
 
-  // upload state
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const [tiff, setTiff] = useState(false);
-  const [uploadMeta, setUploadMeta] = useState(null); // { image_id, filename, format, width, height, size_bytes }
+  const [files, setFiles] = useState([]);
   const [uploadError, setUploadError] = useState(null);
-  const [uploading, setUploading] = useState(false);
-
-  // query + analysis state
+  
   const [query, setQuery] = useState("");
   const [analyzeError, setAnalyzeError] = useState(null);
-  const [result, setResult] = useState(null);
-
-  // coordination between the network response and the scan animation
+  
+  const [results, setResults] = useState([]);
   const pendingRef = useRef(null);
   const scanDoneRef = useRef(false);
 
   const finalize = () => {
     if (scanDoneRef.current && pendingRef.current) {
-      setResult(pendingRef.current);
+      setResults(pendingRef.current);
       setPhase("done");
     }
   };
 
-  const handleFile = async (file) => {
+  const handleFilesChange = (newFiles) => {
+    setFiles(newFiles);
     setUploadError(null);
-    setUploading(true);
-
-    // local preview
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    setTiff(isTiffFile(file));
-
-    const res = await uploadImage(file);
-    setUploading(false);
-
-    if (!res.ok) {
-      setUploadError(res.error);
-      setPreviewUrl(null);
-      setTiff(false);
-      return;
+    if (newFiles.length > 0 && phase === 'idle') {
+      setPhase('ready');
+    } else if (newFiles.length === 0) {
+      setPhase('idle');
+      setResults([]);
     }
-    setUploadMeta(res.data);
-    setPhase("ready");
   };
 
   const handleSelectSample = async (path, filename) => {
-    setUploadError(null);
-    setUploading(true);
-
     try {
       const response = await fetch(path);
       const blob = await response.blob();
       const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
-
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      setTiff(isTiffFile(file));
-
-      const res = await uploadImage(file);
-      setUploading(false);
-
-      if (!res.ok) {
-        setUploadError(res.error);
-        setPreviewUrl(null);
-        setTiff(false);
-        return;
-      }
-      setUploadMeta(res.data);
-      setPhase("ready");
+      handleFilesChange([...files, file]);
     } catch (err) {
-      setUploading(false);
       setUploadError("Failed to load sample image: " + err.message);
     }
   };
 
   const handleReset = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPhase("idle");
-    setPreviewUrl(null);
-    setTiff(false);
-    setUploadMeta(null);
+    setFiles([]);
     setUploadError(null);
     setQuery("");
     setAnalyzeError(null);
-    setResult(null);
+    setResults([]);
     pendingRef.current = null;
     scanDoneRef.current = false;
   };
 
   const handleAnalyze = async () => {
-    if (!uploadMeta) {
+    if (files.length === 0) {
       setAnalyzeError("Upload an image first.");
       return;
     }
@@ -129,18 +76,39 @@ export default function Workspace() {
     }
 
     setAnalyzeError(null);
-    setResult(null);
+    setResults([]);
     pendingRef.current = null;
     scanDoneRef.current = false;
     setPhase("analyzing");
 
-    const res = await analyzeImage(uploadMeta.image_id, query.trim());
-    if (!res.ok) {
-      setAnalyzeError(res.error);
-      setPhase("ready");
-      return;
+    const newResults = [];
+    for (const file of files) {
+      // 1. Upload
+      const ul = await uploadImage(file);
+      if (!ul.ok) {
+        setAnalyzeError(`Upload failed for ${file.name}: ${ul.error}`);
+        setPhase("ready");
+        return;
+      }
+      
+      // 2. Analyze
+      const res = await analyzeImage(ul.data.image_id, query.trim());
+      if (!res.ok) {
+        setAnalyzeError(`Analyse failed for ${file.name}: ${res.error}`);
+        setPhase("ready");
+        return;
+      }
+      
+      newResults.push({
+        file,
+        meta: ul.data,
+        result: res.data,
+        previewUrl: URL.createObjectURL(file), // temporary local URL
+        isTiff: isTiffFile(file)
+      });
     }
-    pendingRef.current = res.data;
+
+    pendingRef.current = newResults;
     finalize();
   };
 
@@ -149,7 +117,7 @@ export default function Workspace() {
     finalize();
   };
 
-  const canAnalyze = phase !== "analyzing" && !!uploadMeta && !!query.trim();
+  const canAnalyze = phase !== "analyzing" && files.length > 0 && !!query.trim();
 
   return (
     <div className="min-h-screen">
@@ -166,67 +134,65 @@ export default function Workspace() {
         <div className="grid gap-6 lg:grid-cols-2">
           {/* LEFT: input column */}
           <div className="space-y-6">
-            {phase === "idle" ? (
-              <ImageUpload
-                onFile={handleFile}
-                onSelectSample={handleSelectSample}
-                disabled={uploading}
-                error={uploadError}
-              />
-            ) : (
-              <>
-                <ImagePreview
-                  meta={uploadMeta}
-                  previewUrl={previewUrl}
-                  isTiff={tiff}
-                  onRemove={handleReset}
-                  groundingBox={result?.evidence?.type === "bounding_box" ? result.evidence : null}
+            <ImageUpload
+              files={files}
+              onFilesChange={handleFilesChange}
+              onSelectSample={handleSelectSample}
+              disabled={phase === "analyzing"}
+              error={uploadError}
+            />
+
+            {(phase === "ready" || phase === "analyzing" || phase === "done") && files.length > 0 && (
+              <div className="panel p-6">
+                <QueryInput
+                  value={query}
+                  onChange={setQuery}
+                  onExample={setQuery}
+                  disabled={phase === "analyzing"}
                 />
 
-                <div className="panel p-6">
-                  <QueryInput
-                    value={query}
-                    onChange={setQuery}
-                    onExample={setQuery}
-                    disabled={phase === "analyzing"}
-                  />
+                <button
+                  onClick={handleAnalyze}
+                  disabled={!canAnalyze}
+                  className="btn-primary mt-5 w-full justify-center disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {phase === "analyzing" ? "Analysing…" : "Analyze all selected images"}
+                  {phase !== "analyzing" && <span aria-hidden="true">→</span>}
+                </button>
 
-                  <button
-                    onClick={handleAnalyze}
-                    disabled={!canAnalyze}
-                    className="btn-primary mt-5 w-full justify-center disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {phase === "analyzing" ? "Analysing…" : "Analyze image"}
-                    {phase !== "analyzing" && <span aria-hidden="true">→</span>}
-                  </button>
-
-                  {analyzeError && (
-                    <p className="mt-3 flex items-center gap-2 text-sm text-amber" role="alert">
-                      <span aria-hidden="true">▲</span>
-                      {analyzeError}
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
-
-            {uploading && (
-              <p className="font-mono text-[0.64rem] uppercase tracking-[0.16em] text-cyanDim">
-                Uploading & validating…
-              </p>
+                {analyzeError && (
+                  <p className="mt-3 flex items-center gap-2 text-sm text-amber" role="alert">
+                    <span aria-hidden="true">▲</span>
+                    {analyzeError}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
           {/* RIGHT: output column */}
-          <div>
-              {phase === "analyzing" && (
+          <div className="space-y-6">
+            {phase === "analyzing" && (
               <ScanningState
                 onComplete={handleScanComplete}
-                previewUrl={previewUrl}
-                isTiff={tiff}
+                previewUrl={files.length > 0 ? URL.createObjectURL(files[0]) : null}
+                isTiff={files.length > 0 ? isTiffFile(files[0]) : false}
               />
             )}
-            {phase === "done" && <ResultPanel result={result} />}
+            
+            {phase === "done" && results.map((item, i) => (
+              <div key={i} className="space-y-4 mb-10 last:mb-0">
+                <ImagePreview
+                  meta={item.meta}
+                  previewUrl={item.previewUrl}
+                  isTiff={item.isTiff}
+                  onRemove={() => {}}
+                  groundingBox={item.result?.evidence?.type === "bounding_box" ? item.result.evidence : null}
+                />
+                <ResultPanel result={item.result} />
+              </div>
+            ))}
+            
             {(phase === "idle" || phase === "ready") && <IdleHint ready={phase === "ready"} />}
           </div>
         </div>
@@ -235,7 +201,6 @@ export default function Workspace() {
   );
 }
 
-// A calm placeholder for the output column before an analysis runs.
 function IdleHint({ ready }) {
   return (
     <div className="panel flex min-h-[340px] flex-col items-center justify-center p-10 text-center">

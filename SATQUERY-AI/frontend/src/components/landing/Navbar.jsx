@@ -35,11 +35,9 @@ export default function Navbar() {
     >
       <nav className="wrap flex h-16 items-center justify-between">
         {/* Left: wordmark */}
-        <Link to="/" className="flex items-baseline gap-3" aria-label="SatQuery AI home">
-          <span className="font-display text-lg font-semibold tracking-wide text-ink">
-            SATQUERY<span className="text-cyan"> AI</span>
-          </span>
-          <span className="hidden font-mono text-[0.6rem] uppercase tracking-[0.28em] text-faint sm:inline">
+        <Link to="/" className="flex items-center gap-3 sm:gap-5" aria-label="SatQuery AI home">
+          <img src="/logo.png" alt="SatQuery AI Logo" className="h-6 sm:h-9 w-auto object-contain" />
+          <span className="hidden font-mono text-[0.6rem] sm:text-[0.68rem] uppercase tracking-[0.28em] text-faint sm:inline">
             Remote Sensing Intelligence
           </span>
         </Link>

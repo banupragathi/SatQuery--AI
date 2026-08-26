@@ -66,8 +66,8 @@ def run_gemini(image_path: str, prompt: str) -> str:
         # If image is > 1MB or is PNG/TIFF, compress it to optimized JPEG for fast network upload
         if file_size > 1024 * 1024 or ext in (".png", ".tif", ".tiff"):
             with Image.open(image_path) as img:
-                # Normalize color palette channels (e.g. RGBA to RGB)
-                if img.mode in ("RGBA", "P", "LA"):
+                # Normalize color modes (e.g. RGBA, P, I, F, L to RGB) for JPEG compression
+                if img.mode != "RGB":
                     img = img.convert("RGB")
 
                 # Limit maximum resolution to standard high-resolution (max 2048px on side)

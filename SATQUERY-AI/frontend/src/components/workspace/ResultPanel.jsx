@@ -111,13 +111,29 @@ export default function ResultPanel({ result }) {
           <p className="font-mono text-[0.58rem] uppercase tracking-[0.16em] text-faint">
             Confidence
           </p>
-          <p className="mt-1 text-sm text-faint">
-            {result.confidence
-              ? result.confidence
-              : connected
-              ? "Not available for this model"
-              : "Available once a model is connected"}
-          </p>
+          <div className="mt-2">
+            {result.confidence ? (
+              typeof result.confidence === "string" && result.confidence.endsWith("%") ? (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm text-cyan">{result.confidence}</span>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/20 mt-1">
+                    <div
+                      className="h-full rounded-full bg-cyan transition-all duration-700 ease-out"
+                      style={{ width: result.confidence }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-cyan">{result.confidence}</p>
+              )
+            ) : (
+              <p className="text-sm text-faint">
+                {connected
+                  ? "Not available for this model"
+                  : "Available once a model is connected"}
+              </p>
+            )}
+          </div>
         </div>
                 <div className="bg-panel px-6 py-4">
           <p className="font-mono text-[0.58rem] uppercase tracking-[0.16em] text-faint">
