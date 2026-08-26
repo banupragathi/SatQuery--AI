@@ -20,6 +20,20 @@ agent framework (LangChain / LangGraph) would be overkill here and would
 hide what is actually happening. Later, if routing needs to get smarter,
 this one function is the only thing that changes.
 """
+# Keywords that signal a land-cover classification request (BigEarthNet specialist).
+LAND_COVER_KEYWORDS = (
+    "land cover",
+    "land use",
+    "land-cover",
+    "land-use",
+    "classify",
+    "classification",
+    "what type of land",
+    "forest or urban",
+    "vegetation type",
+    "crop type",
+    "is this mainly",
+)
 
 # Keywords that signal the user wants a region located / boxed on the image.
 GROUNDING_KEYWORDS = (
@@ -81,8 +95,23 @@ def route(query: str) -> dict:
             "matched_keyword": None,
         }
 
+
+
     # Grounding is the most specific intent ("locate / highlight / where is"),
     # so we check it FIRST, before captioning or the VQA default.
+    
+    for keyword in LAND_COVER_KEYWORDS:
+        if keyword in text:
+            return {
+                "task": "LAND_COVER",
+                "routing_reason": (
+                    f"Query contains '{keyword}', which asks about land-cover "
+                    f"type, so it was routed to the BigEarthNet specialist."
+                ),
+                "matched_keyword": keyword,
+            }
+    
+    
     for keyword in GROUNDING_KEYWORDS:
         if keyword in text:
             return {
