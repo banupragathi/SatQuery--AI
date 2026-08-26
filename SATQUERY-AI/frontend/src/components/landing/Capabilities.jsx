@@ -165,11 +165,10 @@ function StatusTag({ status }) {
   const active = status === "Active";
   return (
     <span
-      className={`shrink-0 rounded-full border px-2.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.16em] ${
-        active
-          ? "border-cyan/40 text-cyan"
-          : "border-lineBright text-faint"
-      }`}
+      className={`shrink-0 rounded-full border px-2.5 py-1 font-mono text-[0.58rem] uppercase tracking-[0.16em] ${active
+        ? "border-cyan/40 text-cyan"
+        : "border-lineBright text-faint"
+        }`}
     >
       {status}
     </span>

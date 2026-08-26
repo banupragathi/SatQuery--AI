@@ -171,7 +171,7 @@ function Clouds({ cloudMap }) {
 // ---------------------------------------------------------------------------
 function Satellite() {
   const satRef = useRef();
-  const orbitRadius = 1.6;
+  const orbitRadius = 1.2;
   const inclination = Math.PI / 3.2;
 
   // Build orbit ring geometry — a true circular ring around the globe
@@ -214,11 +214,15 @@ function Satellite() {
   useFrame((state) => {
     const t = state.clock.getElapsedTime() * 0.3;
     if (satRef.current) {
+      const zVal = Math.sin(t);
       satRef.current.position.set(
         Math.cos(t) * orbitRadius,
-        Math.sin(t) * orbitRadius * Math.sin(inclination) * 0.3,
-        Math.sin(t) * orbitRadius
+        zVal * orbitRadius * Math.sin(inclination) * 0.3,
+        zVal * orbitRadius
       );
+      // Forced perspective scaling: larger in the front, smaller in the back
+      const depthScale = 1.0 - (zVal * 0.7);
+      satRef.current.scale.setScalar(Math.max(0.2, depthScale));
     }
     // Pulse telemetry dots
     dotsRef.current.forEach((dot, i) => {
@@ -267,34 +271,107 @@ function Satellite() {
 
       {/* Satellite body — always visible, never hidden behind Earth */}
       <group ref={satRef} renderOrder={12}>
-        {/* Main body */}
+        {/* Main spacecraft bus (metallic body) */}
         <mesh renderOrder={12}>
-          <boxGeometry args={[0.04, 0.025, 0.025]} />
-          <meshBasicMaterial
-            color="#c8dff5"
+          <boxGeometry args={[0.04, 0.033, 0.033]} />
+          <meshStandardMaterial
+            color="#dddddd"
+            metalness={0.85}
+            roughness={0.2}
             depthTest={false}
             depthWrite={false}
           />
         </mesh>
-        {/* Solar panels */}
-        <mesh position={[0.05, 0, 0]} renderOrder={12}>
-          <boxGeometry args={[0.04, 0.002, 0.06]} />
-          <meshBasicMaterial
-            color="#4c86f5"
+        
+        {/* Gold foil payload module underneath */}
+        <mesh position={[0, -0.023, 0]} renderOrder={12}>
+          <boxGeometry args={[0.026, 0.013, 0.026]} />
+          <meshStandardMaterial
+            color="#d4af37"
+            metalness={0.7}
+            roughness={0.3}
             depthTest={false}
             depthWrite={false}
           />
         </mesh>
-        <mesh position={[-0.05, 0, 0]} renderOrder={12}>
-          <boxGeometry args={[0.04, 0.002, 0.06]} />
-          <meshBasicMaterial
-            color="#4c86f5"
+
+        {/* Optical Camera / Sensor down-facing */}
+        <mesh position={[0, -0.033, 0]} rotation={[Math.PI / 2, 0, 0]} renderOrder={12}>
+          <cylinderGeometry args={[0.008, 0.008, 0.013, 16]} />
+          <meshStandardMaterial
+            color="#111111"
+            roughness={0.1}
+            metalness={0.9}
             depthTest={false}
             depthWrite={false}
           />
         </mesh>
-        {/* Satellite glow point */}
-        <pointLight color="#38bdf8" intensity={0.4} distance={0.5} />
+        
+        {/* Panel Connectors (horizontal along X-axis) */}
+        <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]} renderOrder={12}>
+          <cylinderGeometry args={[0.003, 0.003, 0.12, 8]} />
+          <meshStandardMaterial
+            color="#888888"
+            metalness={0.9}
+            roughness={0.2}
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {/* Left Solar Panel */}
+        <mesh position={[-0.07, 0, 0]} renderOrder={12}>
+          <boxGeometry args={[0.08, 0.0015, 0.04]} />
+          <meshStandardMaterial
+            color="#0ea5e9"
+            metalness={0.6}
+            roughness={0.2}
+            emissive="#0284c7"
+            emissiveIntensity={0.3}
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {/* Right Solar Panel */}
+        <mesh position={[0.07, 0, 0]} renderOrder={12}>
+          <boxGeometry args={[0.08, 0.0015, 0.04]} />
+          <meshStandardMaterial
+            color="#0ea5e9"
+            metalness={0.6}
+            roughness={0.2}
+            emissive="#0284c7"
+            emissiveIntensity={0.3}
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {/* Antenna dish */}
+        <mesh position={[0, 0.023, 0]} renderOrder={12}>
+          <coneGeometry args={[0.01, 0.02, 16]} />
+          <meshStandardMaterial
+            color="#ffffff"
+            metalness={0.3}
+            roughness={0.5}
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
+        
+        {/* Antenna Mast */}
+        <mesh position={[0, 0.04, 0]} renderOrder={12}>
+          <cylinderGeometry args={[0.001, 0.001, 0.026, 8]} />
+          <meshStandardMaterial
+            color="#aaaaaa"
+            metalness={0.8}
+            depthTest={false}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {/* Subdued Satellite glow point */}
+        <pointLight color="#38bdf8" intensity={0.2} distance={0.5} />
       </group>
     </group>
   );

@@ -151,7 +151,7 @@ function PlanetCanvas({ type, size }) {
             // Horizontal storm band aesthetics
             const bandVal = Math.sin(lat * 12.0 + fbm(lon * 1.5, lat * 1.5, 0.5) * 1.8);
             const normBand = (bandVal + 1.0) / 2.0;
-            
+
             // Great Red Spot hurricane location
             const spotDist = Math.hypot(lon - 0.5, lat + 0.35);
 
@@ -206,7 +206,7 @@ const PLANETS = [
     size: 40,
     ringRadius: 450, // Ring 3 radius
     speed: 210,
-    initialAngle: 145, 
+    initialAngle: 145,
     cw: false,
     glowColor: "rgba(56, 189, 248, 0.35)",
     type: "earth",
@@ -218,7 +218,7 @@ const PLANETS = [
     size: 30,
     ringRadius: 400, // Ring 2 radius
     speed: 150,
-    initialAngle: 35, 
+    initialAngle: 35,
     cw: true,
     glowColor: "rgba(245, 158, 11, 0.28)",
     type: "mars",
@@ -230,7 +230,7 @@ const PLANETS = [
     size: 52,
     ringRadius: 500, // Ring 4 radius
     speed: 260,
-    initialAngle: 215, 
+    initialAngle: 215,
     cw: false,
     glowColor: "rgba(217, 119, 6, 0.22)",
     type: "gas-giant",
@@ -242,7 +242,7 @@ const PLANETS = [
     size: 24,
     ringRadius: 350, // Ring 1 radius
     speed: 110,
-    initialAngle: 315, 
+    initialAngle: 315,
     cw: true,
     glowColor: "rgba(148, 163, 184, 0.24)",
     type: "moon",
@@ -254,7 +254,7 @@ const PLANETS = [
     size: 22,
     ringRadius: 550, // Ring 5 radius
     speed: 310,
-    initialAngle: 75, 
+    initialAngle: 75,
     cw: false,
     glowColor: "rgba(34, 211, 238, 0.28)",
     type: "ice",

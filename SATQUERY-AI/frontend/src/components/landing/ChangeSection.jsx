@@ -10,53 +10,6 @@ import Reveal, { RevealStagger, RevealItem } from "../shared/Reveal.jsx";
   no fabricated statistics.
 */
 
-// "Before" scene: sparse built-up area.
-function SceneBefore() {
-  return (
-    <svg viewBox="0 0 480 300" className="h-full w-full" preserveAspectRatio="xMidYMid slice">
-      <rect width="480" height="300" fill="#0d2036" />
-      <path d="M0 200 L480 170 L480 300 L0 300 Z" fill="#123a52" opacity="0.5" />
-      <g fill="#1c3550">
-        <rect x="60" y="120" width="18" height="18" />
-        <rect x="120" y="150" width="16" height="16" />
-        <rect x="200" y="130" width="20" height="20" />
-        <rect x="300" y="160" width="16" height="16" />
-      </g>
-      <g stroke="#4fd8ee" strokeWidth="0.5" opacity="0.1">
-        {Array.from({ length: 16 }).map((_, i) => (
-          <line key={i} x1={i * 30} y1="0" x2={i * 30} y2="300" />
-        ))}
-      </g>
-    </svg>
-  );
-}
-
-// "After" scene: much denser built-up area.
-function SceneAfter() {
-  return (
-    <svg viewBox="0 0 480 300" className="h-full w-full" preserveAspectRatio="xMidYMid slice">
-      <rect width="480" height="300" fill="#0d2036" />
-      <path d="M0 200 L480 170 L480 300 L0 300 Z" fill="#123a52" opacity="0.5" />
-      <g fill="#24425f">
-        {Array.from({ length: 40 }).map((_, i) => {
-          const x = 40 + (i % 10) * 40 + ((i * 7) % 11);
-          const y = 100 + Math.floor(i / 10) * 34 + ((i * 5) % 9);
-          const s = 12 + ((i * 3) % 10);
-          return <rect key={i} x={x} y={y} width={s} height={s} />;
-        })}
-      </g>
-      {/* highlighted new expansion */}
-      <g fill="none" stroke="#e8a64c" strokeWidth="1.4" strokeDasharray="5 4">
-        <rect x="220" y="118" width="150" height="96" rx="3" />
-      </g>
-      <g stroke="#4fd8ee" strokeWidth="0.5" opacity="0.1">
-        {Array.from({ length: 16 }).map((_, i) => (
-          <line key={i} x1={i * 30} y1="0" x2={i * 30} y2="300" />
-        ))}
-      </g>
-    </svg>
-  );
-}
 
 export default function ChangeSection() {
   const [pos, setPos] = useState(50); // 0..100, how much of "after" is revealed
@@ -99,7 +52,7 @@ export default function ChangeSection() {
             <div className="relative aspect-[16/10] overflow-hidden rounded-lg">
               {/* Before (base layer) */}
               <div className="absolute inset-0">
-                <SceneBefore />
+                <img src="/samples/change-before.png" alt="Before" className="h-full w-full object-cover" />
                 <span className="absolute left-3 top-3 rounded bg-void/70 px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-muted">
                   Before
                 </span>
@@ -110,7 +63,7 @@ export default function ChangeSection() {
                 className="absolute inset-0"
                 style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}
               >
-                <SceneAfter />
+                <img src="/samples/change-after.png" alt="After" className="h-full w-full object-cover" />
                 <span className="absolute right-3 top-3 rounded bg-void/70 px-2 py-1 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-cyan">
                   After
                 </span>

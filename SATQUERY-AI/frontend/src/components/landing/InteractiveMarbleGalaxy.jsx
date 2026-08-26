@@ -46,32 +46,35 @@ export default function InteractiveMarbleGalaxy() {
 
     const createPuff = (x, y, vx, vy) => {
       const color = colors[Math.floor(Math.random() * colors.length)];
-      const size = 110 + Math.random() * 80;
+      // Increase size slightly for 20-30% more visibility
+      const size = 130 + Math.random() * 90;
       
       puffs.push({
-        x: x + (Math.random() - 0.5) * 30,
-        y: y + (Math.random() - 0.5) * 30,
-        vx: vx * 0.15 + (Math.random() - 0.5) * 1.2,
-        vy: vy * 0.15 + (Math.random() - 0.5) * 1.2,
+        x: x + (Math.random() - 0.5) * 40,
+        y: y + (Math.random() - 0.5) * 40,
+        vx: vx * 0.15 + (Math.random() - 0.5) * 1.5,
+        vy: vy * 0.15 + (Math.random() - 0.5) * 1.5,
         radius: size,
         color,
-        alpha: 0.10 + Math.random() * 0.08,
+        // Increased alpha baseline for better glow visibility
+        alpha: 0.14 + Math.random() * 0.10,
         rotation: Math.random() * Math.PI * 2,
         angularVelocity: (Math.random() - 0.5) * 0.012,
         aspectRatio: 0.5 + Math.random() * 0.4, // Elongation to create marble swirl texture
-        life: 140 + Math.random() * 60,
+        // Increase lifespan to keep the effect continuous for longer
+        life: 180 + Math.random() * 80,
         age: 0,
       });
 
-      if (puffs.length > 25) {
+      if (puffs.length > 35) {
         puffs.shift();
       }
     };
 
     const drawPuff = (c, p) => {
       const lifeRatio = p.age / p.life;
-      // Exponential fade out for smooth transitions
-      const opacity = p.alpha * (lifeRatio < 0.25 ? lifeRatio / 0.25 : Math.pow(1 - lifeRatio, 1.5));
+      // Fade out smoothly
+      const opacity = p.alpha * (lifeRatio < 0.25 ? lifeRatio / 0.25 : Math.pow(1 - lifeRatio, 1.2));
       if (opacity <= 0.001) return;
 
       c.save();
@@ -81,14 +84,12 @@ export default function InteractiveMarbleGalaxy() {
       // Organic radial gradient with multiple stops to simulate dust/gas
       const grad = c.createRadialGradient(0, 0, 0, 0, 0, p.radius);
       grad.addColorStop(0, `rgba(${p.color.r}, ${p.color.g}, ${p.color.b}, ${opacity})`);
-      grad.addColorStop(0.3, `rgba(${Math.max(0, p.color.r - 25)}, ${Math.max(0, p.color.g - 25)}, ${p.color.b + 10}, ${opacity * 0.55})`);
-      // Soft transition to purple dust at the edges
-      grad.addColorStop(0.65, `rgba(168, 85, 247, ${opacity * 0.12})`);
+      grad.addColorStop(0.3, `rgba(${Math.max(0, p.color.r - 20)}, ${Math.max(0, p.color.g - 20)}, ${p.color.b + 20}, ${opacity * 0.65})`);
+      grad.addColorStop(0.65, `rgba(168, 85, 247, ${opacity * 0.15})`);
       grad.addColorStop(1, "transparent");
 
       c.fillStyle = grad;
       c.beginPath();
-      // Draw as distorted ellipse to create marble/ribbon texture matching fluid motion
       c.scale(1.3, p.aspectRatio);
       c.arc(0, 0, p.radius, 0, Math.PI * 2);
       c.fill();
@@ -96,20 +97,19 @@ export default function InteractiveMarbleGalaxy() {
     };
 
     const updateAndRender = () => {
-      // Lerp mouse coordinates to create smooth lag
-      lerpMouse.x += (mouse.x - lerpMouse.x) * 0.07;
-      lerpMouse.y += (mouse.y - lerpMouse.y) * 0.07;
+      // Smoother delayed tracking
+      lerpMouse.x += (mouse.x - lerpMouse.x) * 0.045;
+      lerpMouse.y += (mouse.y - lerpMouse.y) * 0.045;
 
       ctx.clearRect(0, 0, width, height);
 
-      // Decay activity metric
-      activity *= 0.95;
+      // Slower decay for continuous feeling. The glow lingers longer when stopped.
+      activity *= 0.985;
       if (activity < 0.001) activity = 0;
 
       // Filter expired puffs
       puffs = puffs.filter((p) => p.age < p.life);
 
-      // Freeze execution loop when fully idle to consume 0% CPU
       if (puffs.length === 0 && activity === 0) {
         active = false;
         animFrame = null;
@@ -120,7 +120,7 @@ export default function InteractiveMarbleGalaxy() {
 
       // 1. Draw central glowing halo following the cursor
       if (activity > 0) {
-        const glowRadius = 240;
+        const glowRadius = 280;
         const glowGrad = ctx.createRadialGradient(
           lerpMouse.x,
           lerpMouse.y,
@@ -129,9 +129,10 @@ export default function InteractiveMarbleGalaxy() {
           lerpMouse.y,
           glowRadius
         );
-        glowGrad.addColorStop(0, `rgba(79, 216, 238, ${0.12 * activity})`);
-        glowGrad.addColorStop(0.4, `rgba(76, 134, 245, ${0.05 * activity})`);
-        glowGrad.addColorStop(0.7, `rgba(168, 85, 247, ${0.02 * activity})`);
+        // Slightly brighter underlying halo
+        glowGrad.addColorStop(0, `rgba(79, 216, 238, ${0.15 * activity})`);
+        glowGrad.addColorStop(0.4, `rgba(76, 134, 245, ${0.06 * activity})`);
+        glowGrad.addColorStop(0.7, `rgba(168, 85, 247, ${0.03 * activity})`);
         glowGrad.addColorStop(1, "transparent");
 
         ctx.fillStyle = glowGrad;
@@ -149,28 +150,23 @@ export default function InteractiveMarbleGalaxy() {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist > 1.0) {
-          // Vortex / Swirl force calculations (perpendicular vector)
           const tx = -dy / dist;
           const ty = dx / dist;
 
-          // Swirl is faster closer to core
-          const swirlSpeed = Math.min(2.2, 280 / (dist + 70));
+          const swirlSpeed = Math.min(2.5, 300 / (dist + 70));
           p.vx += tx * swirlSpeed * 0.09;
           p.vy += ty * swirlSpeed * 0.09;
 
-          // Soft gravitational pull towards cursor center
-          p.vx += (dx / dist) * 0.025;
-          p.vy += (dy / dist) * 0.025;
+          p.vx += (dx / dist) * 0.035;
+          p.vy += (dy / dist) * 0.035;
         }
 
-        // Apply friction
         p.vx *= 0.95;
         p.vy *= 0.95;
 
         p.x += p.vx;
         p.y += p.vy;
 
-        // Custom spin matching velocity
         p.rotation += p.angularVelocity + (p.vx + p.vy) * 0.0015;
         p.age++;
 
@@ -191,12 +187,11 @@ export default function InteractiveMarbleGalaxy() {
       mouse.x = newX;
       mouse.y = newY;
 
-      // Reactivate activity factor
-      activity = Math.min(1.0, activity + dist * 0.016);
+      // Faster activity ramp up
+      activity = Math.min(1.0, activity + dist * 0.025);
 
-      // Spawn new particles/puffs when cursor is moving
       if (dist > 2) {
-        const spawnCount = dist > 18 ? 2 : 1;
+        const spawnCount = dist > 15 ? 2 : 1;
         for (let i = 0; i < spawnCount; i++) {
           createPuff(newX, newY, dx, dy);
         }
@@ -208,11 +203,23 @@ export default function InteractiveMarbleGalaxy() {
       }
     };
 
+    // Make sure we track movement even during scroll to feel continuous
+    const handleScroll = () => {
+      // Just keep activity moderately alive to wake up the glow safely during scroll
+      activity = Math.min(1.0, activity + 0.15);
+      if (!active) {
+        active = true;
+        animFrame = requestAnimationFrame(updateAndRender);
+      }
+    };
+
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("scroll", handleScroll);
       if (animFrame) cancelAnimationFrame(animFrame);
     };
   }, []);
@@ -220,7 +227,9 @@ export default function InteractiveMarbleGalaxy() {
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-0 h-full w-full opacity-60 mix-blend-screen"
+      // Increased z-index to overlay across all sections rather than being hidden under them
+      // Increased opacity from 60 to 85 for the requested 20-30% boost.
+      className="pointer-events-none fixed inset-0 z-[100] h-full w-full opacity-85 mix-blend-screen"
       style={{ backfaceVisibility: "hidden" }}
     />
   );
