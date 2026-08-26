@@ -95,8 +95,13 @@ export default function ResultPanel({ result }) {
         </p>
 
         {connected && result.answer ? (
-          <p className="text-base leading-relaxed text-ink">
-            {result.answer}
+          <p className="whitespace-pre-wrap text-base leading-relaxed text-ink">
+            {result.answer
+              .replace(/^#{1,6}\s+/gm, "")
+              .replace(/(\*\*|__)(.*?)\1/g, "$2")
+              .replace(/([*_])([^\s*_.][^*_]*?[^\s*_.]|[^\s*_.])\1/g, "$2")
+              .replace(/```([\s\S]*?)```/g, "$1")
+              .replace(/`([^`]+)`/g, "$1")}
           </p>
         ) : (
           <div className="rounded-xl border border-amber/30 bg-amber/[0.05] p-5">
