@@ -1,10 +1,10 @@
 """
-vqa.py  ---  Visual Question Answering specialist
-Answers a specific question about a satellite image using a real model
-(Gemini) via gemini_engine.py. Gemini is general-purpose, so answers are
-tagged honestly. Missing key or failed call -> honest pending/error state.
+vqa.py — Visual Question Answering specialist
+Answers questions about satellite images using Gemini.
+Now includes confidence self-assessment parsed from the response.
 """
 
+import re
 from gemini_engine import run_gemini, is_configured, GeminiError
 
 SPECIALIST_NAME = "VQA"
@@ -17,8 +17,28 @@ def _build_prompt(query: str) -> str:
         "Answer the user's question based ONLY on what is visibly present in "
         "the image. Be concise and specific. If the image does not contain "
         "enough information to answer, say so honestly rather than guessing.\n\n"
-        f"User question: {query}"
+        f"User question: {query}\n\n"
+        "After your answer, on a NEW line, write exactly: "
+        "CONFIDENCE: <number>% "
+        "where <number> is your honest self-assessed confidence from 0 to 100 "
+        "in your answer's accuracy. Base this on how clearly the image shows "
+        "the relevant features."
     )
+
+
+def _parse_confidence(text: str) -> tuple:
+    """
+    Split the answer text from the CONFIDENCE: XX% line.
+    Returns (clean_answer, confidence_string_or_None).
+    """
+    match = re.search(r'CONFIDENCE:\s*(\d{1,3})%', text, re.IGNORECASE)
+    if match:
+        conf_value = int(match.group(1))
+        conf_value = max(0, min(100, conf_value))
+        # Remove the confidence line from the answer
+        clean = re.sub(r'\n*\s*CONFIDENCE:\s*\d{1,3}%.*', '', text, flags=re.IGNORECASE).strip()
+        return clean, f"{conf_value}% (model self-assessment)"
+    return text.strip(), None
 
 
 def analyze(image_path: str, query: str) -> dict:
@@ -35,7 +55,8 @@ def analyze(image_path: str, query: str) -> dict:
         }
 
     try:
-        answer_text = run_gemini(image_path, _build_prompt(query))
+        raw_answer = run_gemini(image_path, _build_prompt(query))
+        answer_text, confidence = _parse_confidence(raw_answer)
     except GeminiError as e:
         return {
             "task": "Visual Question Answering",
@@ -56,6 +77,6 @@ def analyze(image_path: str, query: str) -> dict:
         "answer": answer_text,
         "message": "Answered by a general-purpose model (Gemini). "
                    "Remote-sensing-adapted model is the fine-tuned specialist.",
-        "confidence": None,
+        "confidence": confidence,
         "evidence": None,
     }

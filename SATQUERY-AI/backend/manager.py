@@ -1,66 +1,63 @@
 """
-manager.py
-==========
+manager.py — Query router with natural-language keyword matching
+================================================================
+Routes user queries to the right specialist. Uses broad keyword lists
+plus fallback patterns so natural phrasing works, not just exact words.
 
-The Manager is the "brain" that decides WHAT KIND of analysis a user's
-question needs. It does not run any AI model itself. Its only job is to
-read the natural-language query and return a short TASK label, such as
-"VQA", "CAPTION", or "GROUNDING".
-
-Why keep it this simple?
-------------------------
-The Manager deliberately knows nothing about which specialists exist or
-how they work. It only produces a task label (a plain string). The
-registry (registry.py) is the single place that maps a task label to the
-function that handles it. This separation is what lets us add new
-specialists later (CHANGE, OPTICAL_SAR) WITHOUT rewriting the Manager.
-
-Right now routing is simple keyword matching. That is intentional. A big
-agent framework (LangChain / LangGraph) would be overkill here and would
-hide what is actually happening. Later, if routing needs to get smarter,
-this one function is the only thing that changes.
+Priority order: LAND_COVER → GROUNDING → CAPTION → VQA (default)
 """
-# Keywords that signal a land-cover classification request (BigEarthNet specialist).
+
+# Land-cover / classification intent
 LAND_COVER_KEYWORDS = (
-    "land cover",
-    "land use",
-    "land-cover",
-    "land-use",
-    "classify",
-    "classification",
-    "what type of land",
-    "forest or urban",
-    "vegetation type",
-    "crop type",
-    "is this mainly",
+    "land cover", "land use", "land-cover", "land-use",
+    "classify", "classification",
+    "what type of land", "what kind of land",
+    "forest or urban", "forest or agriculture",
+    "vegetation type", "crop type",
+    "is this mainly", "is this mostly",
+    "is this urban", "is this forest", "is this agricultural",
+    "land class", "terrain type",
 )
 
-# Keywords that signal the user wants a region located / boxed on the image.
+# Grounding intent — user wants something LOCATED / POINTED AT on the image
 GROUNDING_KEYWORDS = (
-    "highlight",
-    "locate",
-    "where is",
-    "where are",
-    "point to",
-    "point out",
-    "mark the",
-    "show me the location",
-    "find the",
-    "outline",
+    "highlight", "locate", "localize",
+    "where is", "where are", "where can i see",
+    "point to", "point out", "point at",
+    "mark the", "mark out",
+    "show me the location", "show me where",
+    "show the", "show me the",
+    "find the", "find where",
+    "outline", "outline the",
+    "draw a box", "bounding box",
+    "identify the location", "identify where",
+    "circle the", "indicate the",
+    "which part", "which area", "which region",
+    "pin the", "pinpoint",
 )
 
-# Keywords that signal the user wants a description / caption of the whole
-# scene, rather than an answer to a specific question.
+# Captioning intent — user wants a DESCRIPTION of the whole scene
 CAPTION_KEYWORDS = (
-    "describe",
-    "description",
-    "caption",
-    "summarize",
-    "summary",
-    "overview",
-    "what does this image show",
-    "what is in this image",
-    "scene",
+    "describe", "description",
+    "caption", "captioning",
+    "summarize", "summary", "summarise",
+    "overview", "give me an overview",
+    "what does this image show", "what does the image show",
+    "what is in this image", "what's in this image",
+    "what do you see", "what can you see",
+    "tell me about this image", "tell me about the image",
+    "tell me what you see",
+    "what does this mean", "what does the image mean",
+    "explain this image", "explain the image",
+    "what is this image", "what's this image",
+    "scene", "scene description",
+    "what is visible", "what's visible",
+    "what is shown", "what's shown",
+    "list the features", "list everything",
+    "what all is there", "what all can you see",
+    "brief me", "give me details",
+    "analyze this", "analyse this",
+    "interpret this",
 )
 
 
@@ -68,23 +65,8 @@ def route(query: str) -> dict:
     """
     Decide which task a query belongs to.
 
-    Parameters
-    ----------
-    query : str
-        The user's natural-language question, e.g. "Is there a water body?"
-
-    Returns
-    -------
-    dict
-        {
-            "task": "VQA" | "CAPTION" | "GROUNDING",
-            "routing_reason": "<plain-English explanation>",
-            "matched_keyword": "<the keyword that matched, or None>"
-        }
-
-    We return a small dict (not just the string) so the frontend can show a
-    transparent "why did it choose this?" line in the execution trace. It is
-    still simple to use: callers just read result["task"].
+    Returns dict with task, routing_reason, matched_keyword.
+    Checks in order: LAND_COVER → GROUNDING → CAPTION → VQA default.
     """
     text = (query or "").strip().lower()
 
@@ -95,11 +77,7 @@ def route(query: str) -> dict:
             "matched_keyword": None,
         }
 
-
-
-    # Grounding is the most specific intent ("locate / highlight / where is"),
-    # so we check it FIRST, before captioning or the VQA default.
-    
+    # 1. Land-cover (most domain-specific)
     for keyword in LAND_COVER_KEYWORDS:
         if keyword in text:
             return {
@@ -110,8 +88,8 @@ def route(query: str) -> dict:
                 ),
                 "matched_keyword": keyword,
             }
-    
-    
+
+    # 2. Grounding (user wants location/box)
     for keyword in GROUNDING_KEYWORDS:
         if keyword in text:
             return {
@@ -123,19 +101,19 @@ def route(query: str) -> dict:
                 "matched_keyword": keyword,
             }
 
+    # 3. Captioning (user wants a description of the whole scene)
     for keyword in CAPTION_KEYWORDS:
         if keyword in text:
             return {
                 "task": "CAPTION",
                 "routing_reason": (
                     f"Query contains '{keyword}', which asks for a description "
-                    f"of the scene rather than a specific answer."
+                    f"of the scene, so it was routed to captioning."
                 ),
                 "matched_keyword": keyword,
             }
 
-    # Default: any direct question ("Is there...?", "Are there...?", "How many...?")
-    # is treated as Visual Question Answering.
+    # 4. Default: VQA (any direct question about the image)
     return {
         "task": "VQA",
         "routing_reason": (
