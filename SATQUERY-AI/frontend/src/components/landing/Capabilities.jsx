@@ -102,7 +102,7 @@ const CARDS = [
     verb: "Locate",
     name: "Region Grounding",
     example: "“Highlight the water body.”",
-    status: "Planned",
+    status: "Active",
     Glyph: LocateGlyph,
   },
   {
