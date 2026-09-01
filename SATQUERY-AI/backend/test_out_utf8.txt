@@ -1,0 +1,21 @@
+﻿Uploading images...
+
+--- TEST 1 ---
+Query: Describe this image and is there any water body?
+CRASH ERROR: Expecting value: line 1 column 1 (char 0)
+
+--- TEST 2 ---
+Query: Describe this image, is there any water body, and show me where it is.
+CRASH ERROR: Expecting value: line 1 column 1 (char 0)
+
+--- TEST 3 ---
+Query: Is there a water body?
+CRASH ERROR: Expecting value: line 1 column 1 (char 0)
+
+--- TEST 4 ---
+Query: Describe the image and classify the land cover.
+CRASH ERROR: Expecting value: line 1 column 1 (char 0)
+
+--- TEST 5 ---
+Query: Compare these two images and show me where the changes occurred.
+CRASH ERROR: Expecting value: line 1 column 1 (char 0)

@@ -119,38 +119,166 @@ def run_gemini(image_path: str, prompt: str) -> str:
         ]
     }
 
-    try:
-        # Increased timeout to 60 seconds for larger network buffers
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
-        if response.status_code != 200:
-            try:
-                err_json = response.json()
-                err_msg = err_json.get("error", {}).get("message", response.text)
-            except Exception:
-                err_msg = response.text
-            logger.error("Gemini API error  status=%d  model=%s  msg=%s",
-                         response.status_code, GEMINI_MODEL, err_msg[:200])
-            raise GeminiError(f"Gemini API returned status {response.status_code}: {err_msg}")
+    import time
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Increased timeout to 60 seconds for larger network buffers
+            response = requests.post(url, headers=headers, json=payload, timeout=60)
+            if response.status_code != 200:
+                try:
+                    err_json = response.json()
+                    err_msg = err_json.get("error", {}).get("message", response.text)
+                except Exception:
+                    err_msg = response.text
+                if response.status_code in (429, 503):
+                    if attempt < max_retries - 1:
+                        time.sleep(2 ** attempt)
+                        continue
+                    raise GeminiError("The AI model is temporarily unavailable (Quota/Demand limit reached).")
+                logger.error("Gemini API error  status=%d  model=%s  msg=%s",
+                             response.status_code, GEMINI_MODEL, err_msg[:200])
+                raise GeminiError(f"Gemini API returned status {response.status_code}: {err_msg}")
+    
+            data = response.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                raise GeminiError("Gemini returned no response candidates.")
+    
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if not parts:
+                raise GeminiError("Content parts from Gemini response are empty.")
+    
+            text = parts[0].get("text", "").strip()
+            if not text:
+                raise GeminiError("Gemini returned an empty text response.")
+    
+            logger.info("Gemini response OK  model=%s  response_len=%d", GEMINI_MODEL, len(text))
+            return text
+    
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise GeminiError("Network error connecting to AI model.")
+        except GeminiError:
+            raise
+        except Exception as e:
+            raise GeminiError("The AI model encountered an unexpected error.")
 
-        data = response.json()
-        candidates = data.get("candidates", [])
-        if not candidates:
-            raise GeminiError("Gemini returned no response candidates.")
+def run_gemini_text(prompt: str) -> str:
+    """Send text prompt to Gemini and return the text answer. Used for planning."""
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip(' \t\n\r"\'')
+    if not api_key:
+        raise GeminiError("GEMINI_API_KEY is not set in the environment.")
 
-        parts = candidates[0].get("content", {}).get("parts", [])
-        if not parts:
-            raise GeminiError("Content parts from Gemini response are empty.")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
 
-        text = parts[0].get("text", "").strip()
-        if not text:
-            raise GeminiError("Gemini returned an empty text response.")
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.0
+        }
+    }
 
-        logger.info("Gemini response OK  model=%s  response_len=%d", GEMINI_MODEL, len(text))
-        return text
+    import time
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=60)
+            if response.status_code != 200:
+                err = response.json().get("error", {}).get("message", response.text)
+                if response.status_code in (429, 503):
+                    if attempt < max_retries - 1:
+                        time.sleep(2 ** attempt)
+                        continue
+                    raise GeminiError("The AI model is temporarily unavailable (Quota/Demand limit reached).")
+                raise GeminiError(f"Gemini API returned {response.status_code}: {err}")
+    
+            data = response.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                raise GeminiError("No response candidates.")
+                
+            text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+            return text
+        except requests.exceptions.ReadTimeout:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise GeminiError("The AI model timed out. Please try again.")
+        except GeminiError:
+            raise
+        except Exception as e:
+            raise GeminiError("The AI model encountered an unexpected error.")
 
-    except requests.exceptions.RequestException as e:
-        raise GeminiError(f"HTTP request to Gemini API failed: {e}")
-    except GeminiError:
-        raise
-    except Exception as e:
-        raise GeminiError(f"Error parsing Gemini response: {e}")
+def run_gemini_multi(image_paths: list, prompt: str) -> str:
+    """Send multiple images + one text prompt to Gemini."""
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip(' \t\n\r"\'')
+    if not api_key:
+        raise GeminiError("GEMINI_API_KEY is not set.")
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
+
+    parts = [{"text": prompt}]
+    for img_path in image_paths:
+        from PIL import Image
+        import io
+        ext = os.path.splitext(img_path)[1].lower()
+        file_size = os.path.getsize(img_path)
+        if file_size > 1024 * 1024 or ext in (".png", ".tif", ".tiff"):
+            with Image.open(img_path) as img:
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                img.thumbnail((2048, 2048))
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=85)
+                img_bytes = buf.getvalue()
+                mime = "image/jpeg"
+        else:
+            with open(img_path, "rb") as f:
+                img_bytes = f.read()
+            mime = "image/png" if ext == ".png" else "image/jpeg"
+
+        parts.append({
+            "inlineData": {
+                "mimeType": mime,
+                "data": base64.b64encode(img_bytes).decode("utf-8")
+            }
+        })
+
+    payload = {"contents": [{"parts": parts}]}
+
+    import time
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=60)
+            if response.status_code != 200:
+                if response.status_code in (429, 503):
+                    if attempt < max_retries - 1:
+                        time.sleep(2 ** attempt)
+                        continue
+                    raise GeminiError("The AI model is temporarily unavailable (Quota/Demand limit reached).")
+                err = response.json().get("error", {}).get("message", response.text)
+                raise GeminiError(f"Gemini returned {response.status_code}: {err}")
+            
+            data = response.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            raise GeminiError("Network error connecting to AI model.")
+        except GeminiError:
+            raise
+        except Exception as e:
+            raise GeminiError("The AI model encountered an unexpected error.")

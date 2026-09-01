@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "C:\Users\banup\OneDrive\Desktop\SAT-QUERY\SATQUERY-AI\backend\planner.py", line 55, in create_execution_plan
+    raw_output = run_gemini_text(prompt)
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\banup\OneDrive\Desktop\SAT-QUERY\SATQUERY-AI\backend\gemini_engine.py", line 162, in run_gemini_text
+    raise GeminiError("GEMINI_API_KEY is not set in the environment.")
+gemini_engine.GeminiError: GEMINI_API_KEY is not set in the environment.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "C:\Users\banup\OneDrive\Desktop\SAT-QUERY\SATQUERY-AI\backend\planner.py", line 76, in create_execution_plan
+    dbg.write(f"Raw output:\n{raw_output}\n\nTraceback:\n{traceback.format_exc()}")
+                              ^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'raw_output' where it is not associated with a value

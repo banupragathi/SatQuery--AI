@@ -1,0 +1,44 @@
+{
+  "status": "completed",
+  "query": "describe this image. is there any water body? show it.",
+  "execution_plan": [
+    {
+      "specialist": "CAPTION",
+      "purpose": "Query contains 'describe', which asks for a description of the scene, so it was routed to captioning.",
+      "depends_on": []
+    }
+  ],
+  "agent_results": [
+    {
+      "specialist": "CAPTION",
+      "status": "completed",
+      "answer": null,
+      "confidence": null,
+      "model": "Gemini (general-purpose VLM)",
+      "task": "Captioning / Scene Description"
+    }
+  ],
+  "visual_results": [],
+  "final_answer": "Analysis could not be completed.",
+  "answer": "Analysis could not be completed.",
+  "task": "Captioning / Scene Description",
+  "specialist": "CAPTION",
+  "model": "Gemini",
+  "confidence": null,
+  "evidence": null,
+  "execution_trace": [
+    {
+      "step": "Images received",
+      "detail": "1 images selected"
+    },
+    {
+      "step": "Orchestrator Planned",
+      "detail": "1 tasks detected"
+    },
+    {
+      "step": "Agent CAPTION",
+      "detail": "(COMPLETED) Query contains 'describe', which asks for a description of the scene, so it was routed to captioning."
+    }
+  ],
+  "model_connected": true
+}

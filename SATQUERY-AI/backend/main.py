@@ -37,7 +37,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import image_validator
-import manager
 import registry
 
 # ---------------------------------------------------------------------------
@@ -78,8 +77,11 @@ IMAGE_STORE: dict[str, dict] = {}
 # ---------------------------------------------------------------------------
 # Request/response models (kept minimal and readable)
 # ---------------------------------------------------------------------------
+from typing import Optional
+
 class AnalyzeRequest(BaseModel):
-    image_id: str
+    image_id: Optional[str] = None
+    image_ids: Optional[list[str]] = None
     query: str
 
 
@@ -140,60 +142,69 @@ async def upload(file: UploadFile = File(...)):
 
 @app.post("/analyze")
 def analyze(request: AnalyzeRequest):
-    """
-    Route a query to the right specialist and return its result.
-
-    Steps (this is the whole architecture in one function):
-        1. Look up the previously-uploaded image.
-        2. Ask the Manager which task this query is (VQA / CAPTION / ...).
-        3. Ask the registry for that task's specialist.
-        4. Run the specialist's analyze() and return its structured result.
-    """
-    # 1. Find the image.
-    image = IMAGE_STORE.get(request.image_id)
-    if image is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Unknown image_id. Upload the image again before analysing.",
-        )
+    # 1. Gather all requested images.
+    images = []
+    if request.image_id:
+        img = IMAGE_STORE.get(request.image_id)
+        if not img:
+            raise HTTPException(status_code=404, detail=f"Unknown image_id {request.image_id}")
+        images.append(img)
+        
+    if request.image_ids:
+        for idx in request.image_ids:
+            img = IMAGE_STORE.get(idx)
+            if not img:
+                raise HTTPException(status_code=404, detail=f"Unknown image_id {idx}")
+            images.append(img)
+            
+    if not images:
+        raise HTTPException(status_code=400, detail="No images provided.")
 
     if not (request.query or "").strip():
         raise HTTPException(status_code=400, detail="Query is empty.")
 
-    # 2. Manager decides the task.
-    routing = manager.route(request.query)
-    task = routing["task"]
-
-    # 3. Registry finds the specialist for that task.
-    specialist = registry.get_specialist(task)
-    if specialist is None:
-        # A task with no active specialist yet (e.g. a future CHANGE task).
+    # 2. Plan the execution via the planner.
+    import planner
+    is_multi = len(images) > 1
+    
+    tracing_prefix = [
+        {"step": "Images received", "detail": f"{len(images)} images selected"}
+    ]
+    
+    try:
+        plan = planner.create_execution_plan(request.query, is_multi)
+        tracing_prefix.append({"step": "Orchestrator Planned", "detail": f"{len(plan)} tasks detected"})
+        
+        # 3. Execute the plan via the executor.
+        import executor
+        image_paths = [img["path"] for img in images]
+        
+        # Execute branches and aggregate structured UI results.
+        final_payload = executor.execute_plan(plan, image_paths, request.query)
+        final_payload["execution_trace"] = tracing_prefix + final_payload["execution_trace"]
+        return final_payload
+        
+    except Exception as e:
+        # CONTROL PLANE ERROR! e.g., gemini rating limit preventing plan assembly
+        tracing_prefix.append({"step": "Orchestrator Planning Failed", "detail": "Unable to assemble execution sequence."})
+        
+        # We must NOT use ORCHESTRATOR as a specialist string!
+        # Render the direct string value of the error which is already sanitized by gemini_engine.py
+        msg = str(e)
+        if not msg or "Internal" in msg:
+            msg = "The AI model is temporarily unavailable (Quota/Demand limit reached)."
+            
         return {
-            "status": "no_specialist",
-            "task": task,
+            "status": "failed",
+            "task": "MULTI-AGENT ANALYSIS",
             "query": request.query,
-            "routing_reason": routing["routing_reason"],
-            "message": f"No specialist is connected for task '{task}' yet.",
-            "execution_trace": _build_trace(image, routing, specialist_ran=False),
+            "specialist": "",
+            "model": "",
+            "answer": f"Analysis could not be planned: {msg}",
+            "execution_plan": [],
+            "execution_trace": tracing_prefix,
+            "model_connected": True
         }
-
-    # 4. Run the specialist.
-    result = specialist(image["path"], request.query)
-
-    return {
-        "status": "completed",
-        "query": request.query,
-        "task": result.get("task", task),
-        "specialist": result.get("specialist"),
-        "model": result.get("model"),
-        "model_connected": result.get("model_connected", False),
-        "answer": result.get("answer"),
-        "message": result.get("message"),
-        "confidence": result.get("confidence"),
-        "evidence": result.get("evidence"),
-        "routing_reason": routing["routing_reason"],
-        "execution_trace": _build_trace(image, routing, specialist_ran=True, result=result),
-    }
 
 
 # ---------------------------------------------------------------------------

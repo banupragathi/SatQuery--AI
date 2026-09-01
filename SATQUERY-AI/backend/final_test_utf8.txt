@@ -1,0 +1,56 @@
+﻿Uploading images...
+
+--- TEST 1 ---
+Query: Describe this image and is there any water body?
+RAW RESPONSE (status 200 ): {"status":"completed","query":"Describe this image and is there any water body?","execution_plan":[{"specialist":"ORCHESTRATOR","purpose":"Multi-Agent pipeline failed due to Google API limits or netwo
+Plan: ['ORCHESTRATOR (deps: [])']
+Specialist Meta: ORCHESTRATOR
+Model Meta: ù
+Trace: Agent ORCHESTRATOR: (FAILED) Multi-Agent pipeline failed due to Google API limits or network issues: Gemini API returned 429: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash
+Please retry in 10.684063931s.
+Answer Preview: Failed: Specialist ORCHESTRATOR is not available.
+
+--- TEST 2 ---
+Query: Describe this image, is there any water body, and show me where it is.
+RAW RESPONSE (status 200 ): {"status":"completed","query":"Describe this image, is there any water body, and show me where it is.","execution_plan":[{"specialist":"ORCHESTRATOR","purpose":"Multi-Agent pipeline failed due to Goog
+Plan: ['ORCHESTRATOR (deps: [])']
+Specialist Meta: ORCHESTRATOR
+Model Meta: ù
+Trace: Agent ORCHESTRATOR: (FAILED) Multi-Agent pipeline failed due to Google API limits or network issues: Gemini API returned 429: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash
+Please retry in 4.003382096s.
+Answer Preview: Failed: Specialist ORCHESTRATOR is not available.
+
+--- TEST 3 ---
+Query: Is there a water body?
+RAW RESPONSE (status 200 ): {"status":"completed","query":"Is there a water body?","execution_plan":[{"specialist":"ORCHESTRATOR","purpose":"Multi-Agent pipeline failed due to Google API limits or network issues: Gemini API retu
+Plan: ['ORCHESTRATOR (deps: [])']
+Specialist Meta: ORCHESTRATOR
+Model Meta: ù
+Trace: Agent ORCHESTRATOR: (FAILED) Multi-Agent pipeline failed due to Google API limits or network issues: Gemini API returned 429: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash
+Please retry in 57.530336883s.
+Answer Preview: Failed: Specialist ORCHESTRATOR is not available.
+
+--- TEST 4 ---
+Query: Describe the image and classify the land cover.
+RAW RESPONSE (status 200 ): {"status":"completed","query":"Describe the image and classify the land cover.","execution_plan":[{"specialist":"ORCHESTRATOR","purpose":"Multi-Agent pipeline failed due to Google API limits or networ
+Plan: ['ORCHESTRATOR (deps: [])']
+Specialist Meta: ORCHESTRATOR
+Model Meta: ù
+Trace: Agent ORCHESTRATOR: (FAILED) Multi-Agent pipeline failed due to Google API limits or network issues: Gemini API returned 429: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash
+Please retry in 50.745399358s.
+Answer Preview: Failed: Specialist ORCHESTRATOR is not available.
+
+--- TEST 5 ---
+Query: Compare these two images and show me where the changes occurred.
+RAW RESPONSE (status 200 ): {"status":"completed","query":"Compare these two images and show me where the changes occurred.","execution_plan":[{"specialist":"ORCHESTRATOR","purpose":"Multi-Agent pipeline failed due to Google API
+Plan: ['ORCHESTRATOR (deps: [])']
+Specialist Meta: ORCHESTRATOR
+Model Meta: ù
+Trace: Agent ORCHESTRATOR: (FAILED) Multi-Agent pipeline failed due to Google API limits or network issues: Gemini API returned 429: You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash
+Please retry in 44.170696032s.
+Answer Preview: Failed: Specialist ORCHESTRATOR is not available.

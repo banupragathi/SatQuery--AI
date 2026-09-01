@@ -15,9 +15,9 @@ def _build_prompt(query: str) -> str:
     return (
         "You are analysing a satellite / aerial remote-sensing image. "
         "Answer the user's question based ONLY on what is visibly present in "
-        "the image. Be concise and specific. If the image does not contain "
-        "enough information to answer, say so honestly rather than guessing.\n\n"
-        f"User question: {query}\n\n"
+        "the image. Be concise and specific. IF the query contains multiple parts, focus solely on the part assigned as your SPECIFIC task. "
+        "CRITICALLY: Do NOT recount a full general description of the image. Just answer the exact specific question asked.\n\n"
+        f"User instruction: {query}\n\n"
         "After your answer, on a NEW line, write exactly: "
         "CONFIDENCE: <number>% "
         "where <number> is your honest self-assessed confidence from 0 to 100 "

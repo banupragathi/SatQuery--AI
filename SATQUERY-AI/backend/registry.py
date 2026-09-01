@@ -23,39 +23,57 @@ import vqa
 import caption
 import grounding
 import remote_sensing
+import change
 
 SPECIALISTS = {
-    "VQA": vqa.analyze,
-    "CAPTION": caption.analyze,
-    "GROUNDING": grounding.analyze,
-    "LAND_COVER": remote_sensing.analyze,
-    # "CHANGE": change.analyze,          # Phase 3
-    # "OPTICAL_SAR": optical_sar.analyze  # Phase 5
+    "VQA": {
+        "func": vqa.analyze,
+        "capability": "Use for answering specific textual questions about the image, extracting facts, or detecting if a feature exists.",
+        "requires_context": False,
+        "output_type": "Textual answer"
+    },
+    "CAPTION": {
+        "func": caption.analyze,
+        "capability": "Use for generating broad overviews, summaries, and general descriptions of the entire scene.",
+        "requires_context": False,
+        "output_type": "Textual description"
+    },
+    "GROUNDING": {
+        "func": grounding.analyze,
+        "capability": "Use for locating, pinpointing, highlighting, or drawing bounding boxes around specific objects in the image based on user request (e.g. 'show it', 'where is the lake').",
+        "requires_context": True, # Usually relies on VQA or CAPTION to confirm existence first
+        "output_type": "Visual bounding boxes and coordinates"
+    },
+    "LAND_COVER": {
+        "func": remote_sensing.analyze,
+        "capability": "Use for precise environmental land-cover classification and identifying terrain types.",
+        "requires_context": False,
+        "output_type": "Textual classification"
+    },
+    "CHANGE": {
+        "func": change.analyze,
+        "capability": "Use specifically for change detection when comparing TWO temporal images side-by-side.",
+        "requires_context": False,
+        "output_type": "Textual description of changes"
+    }
 }
-# Task label  ->  the function that handles it.
-# Every specialist function has the SAME shape: analyze(image_path, query).
-# Only VQA and CAPTION are active right now. Future specialists
-# (CHANGE, GROUNDING, OPTICAL_SAR) will be added here as they are built.
-
 
 def get_specialist(task: str):
-    """
-    Return the specialist function for a given task label.
+    """Return the specialist function for a given task label."""
+    spec = SPECIALISTS.get(task)
+    return spec["func"] if spec else None
 
-    Parameters
-    ----------
-    task : str
-        A task label such as "VQA" or "CAPTION".
-
-    Returns
-    -------
-    callable | None
-        The specialist's analyze() function, or None if no specialist is
-        registered for that task yet. main.py handles the None case
-        gracefully instead of crashing.
-    """
+def get_specialist_metadata(task: str) -> dict:
+    """Return the capability metadata for a specialist."""
     return SPECIALISTS.get(task)
 
+def get_all_capabilities() -> dict:
+    """Return a dictionary of all active specialists and their metadata descriptions."""
+    return {k: {
+        "capability": v["capability"],
+        "requires_context": v["requires_context"],
+        "output_type": v["output_type"]
+    } for k, v in SPECIALISTS.items()}
 
 def available_tasks() -> list:
     """List the task labels that currently have an active specialist."""

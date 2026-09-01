@@ -1,0 +1,22 @@
+﻿Uploading...
+
+Query 1: describe this image and is there any water body?
+Plan 1:
+[
+  {
+    "specialist": "CAPTION",
+    "purpose": "Query contains 'describe', which asks for a description.",
+    "depends_on": []
+  },
+  {
+    "specialist": "VQA",
+    "purpose": "Query implies a visual question.",
+    "depends_on": [
+      "CAPTION"
+    ]
+  }
+]
+
+Query 2: describe this image and is there any water body? show it.
+Plan 2:
+null

@@ -1,0 +1,44 @@
+{
+  "status": "completed",
+  "query": "describe this image. is there any water body? show it.",
+  "execution_plan": [
+    {
+      "specialist": "CAPTION",
+      "purpose": "Query contains 'describe', which asks for a description of the scene, so it was routed to captioning.",
+      "depends_on": []
+    }
+  ],
+  "agent_results": [
+    {
+      "specialist": "CAPTION",
+      "status": "completed",
+      "answer": "This image is a graphic logo rather than a satellite or aerial remote-sensing scene. It displays a blue stylized icon of a satellite attached to concentric circular rings forming the letter \"Q\" on the left, accompanied by white stylized text reading \"SatQuery AI\" on a solid black background. No natural or built land cover features (such as water bodies, vegetation, urban areas, or roads) are present.",
+      "confidence": "100% (model self-assessment)",
+      "model": "Gemini (general-purpose VLM)",
+      "task": "Captioning / Scene Description"
+    }
+  ],
+  "visual_results": [],
+  "final_answer": "This image is a graphic logo rather than a satellite or aerial remote-sensing scene. It displays a blue stylized icon of a satellite attached to concentric circular rings forming the letter \"Q\" on the left, accompanied by white stylized text reading \"SatQuery AI\" on a solid black background. No natural or built land cover features (such as water bodies, vegetation, urban areas, or roads) are present.",
+  "answer": "This image is a graphic logo rather than a satellite or aerial remote-sensing scene. It displays a blue stylized icon of a satellite attached to concentric circular rings forming the letter \"Q\" on the left, accompanied by white stylized text reading \"SatQuery AI\" on a solid black background. No natural or built land cover features (such as water bodies, vegetation, urban areas, or roads) are present.",
+  "task": "Captioning / Scene Description",
+  "specialist": "CAPTION",
+  "model": "Gemini",
+  "confidence": "100% (model self-assessment)",
+  "evidence": null,
+  "execution_trace": [
+    {
+      "step": "Images received",
+      "detail": "1 images selected"
+    },
+    {
+      "step": "Orchestrator Planned",
+      "detail": "1 tasks detected"
+    },
+    {
+      "step": "Agent CAPTION",
+      "detail": "(COMPLETED) Query contains 'describe', which asks for a description of the scene, so it was routed to captioning."
+    }
+  ],
+  "model_connected": true
+}
