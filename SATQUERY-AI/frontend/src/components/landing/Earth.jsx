@@ -282,7 +282,7 @@ function Satellite() {
             depthWrite={false}
           />
         </mesh>
-        
+
         {/* Gold foil payload module underneath */}
         <mesh position={[0, -0.023, 0]} renderOrder={12}>
           <boxGeometry args={[0.026, 0.013, 0.026]} />
@@ -306,7 +306,7 @@ function Satellite() {
             depthWrite={false}
           />
         </mesh>
-        
+
         {/* Panel Connectors (horizontal along X-axis) */}
         <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]} renderOrder={12}>
           <cylinderGeometry args={[0.003, 0.003, 0.12, 8]} />
@@ -358,7 +358,7 @@ function Satellite() {
             depthWrite={false}
           />
         </mesh>
-        
+
         {/* Antenna Mast */}
         <mesh position={[0, 0.04, 0]} renderOrder={12}>
           <cylinderGeometry args={[0.001, 0.001, 0.026, 8]} />

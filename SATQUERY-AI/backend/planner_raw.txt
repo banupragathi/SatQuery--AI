@@ -1,7 +1,14 @@
 [
   {
-    "specialist": "LAND_COVER",
-    "purpose": "Identify and classify the types of land cover visible in the image.",
+    "specialist": "VQA",
+    "purpose": "Determine if a water body is present in the image.",
     "depends_on": []
+  },
+  {
+    "specialist": "GROUNDING",
+    "purpose": "Locate and highlight the water body in the image.",
+    "depends_on": [
+      "VQA"
+    ]
   }
 ]
