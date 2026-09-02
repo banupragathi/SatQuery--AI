@@ -20,13 +20,13 @@ f1, precision, recall, val_loss.
 import os
 import torch
 import torch.nn as nn
-from torchvision.models import resnet18
+from torchvision.models import resnet18, resnet50
 
 SPECIALIST_NAME = "LAND_COVER"
-MODEL_SLOT = "BigEarthNet ResNet-18 (fine-tuned)"
+MODEL_SLOT = "BigEarthNet ResNet-50 (fine-tuned)"
 
 CHECKPOINT_PATH = os.path.join(
-    os.path.dirname(__file__), "models", "satquery_bigearthnet_best.pth"
+    os.path.dirname(__file__), "models", "satquery_bigearthnet_resnet50.pth"
 )
 
 # Module-level cache (loaded once, reused)
@@ -63,7 +63,7 @@ def _load_model():
 
     num_classes = len(_classes)
 
-    model = resnet18(weights=None)
+    model = resnet50(weights=None)
     model.conv1 = nn.Conv2d(12, 64, kernel_size=7, stride=2, padding=3, bias=False)
     model.fc = nn.Linear(model.fc.in_features, num_classes)
 
@@ -207,7 +207,7 @@ def analyze(image_path: str, query: str) -> dict:
             "model_connected": True,
             "answer": answer_text,
             "message": (
-                "Classified by a ResNet-18 fine-tuned on BigEarthNet "
+                "Classified by a ResNet-50 fine-tuned on BigEarthNet "
                 f"(Micro F1: {_training_metrics.get('f1', 0):.4f} on validation). "
                 "This is a genuine remote-sensing adapted model."
             ),

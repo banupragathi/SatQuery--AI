@@ -1,12 +1,7 @@
 [
   {
-    "specialist": "CAPTION",
-    "purpose": "Provide a comprehensive description of the overall scene in the image.",
-    "depends_on": []
-  },
-  {
-    "specialist": "VQA",
-    "purpose": "Answer whether there is agricultural land present in the image.",
+    "specialist": "LAND_COVER",
+    "purpose": "Identify and classify the types of land cover visible in the image.",
     "depends_on": []
   }
 ]
