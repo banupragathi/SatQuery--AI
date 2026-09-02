@@ -95,7 +95,7 @@ const CARDS = [
     verb: "Compare",
     name: "Change Analysis",
     example: "“What changed between these two dates?”",
-    status: "Planned",
+    status: "Active",
     Glyph: CompareGlyph,
   },
   {
