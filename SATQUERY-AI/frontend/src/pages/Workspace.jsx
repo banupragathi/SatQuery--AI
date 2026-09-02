@@ -6,6 +6,7 @@ import QueryInput from "../components/workspace/QueryInput.jsx";
 import ScanningState from "../components/workspace/ScanningState.jsx";
 import ResultPanel from "../components/workspace/ResultPanel.jsx";
 import { uploadImage, analyzeImage, analyzeImages } from "../services/api.js";
+import ImageCompare from "../components/workspace/ImageCompare.jsx";
 
 const CHANGE_KEYWORDS = [
   "change", "changed", "changes", "different", "difference",
@@ -272,10 +273,10 @@ export default function Workspace() {
               />
             )}
 
-            {/* CHANGE ANALYSIS RESULT — side-by-side comparison */}
+                        {/* CHANGE ANALYSIS RESULT — interactive slider comparison */}
             {phase === "done" && changeResult && (
               <div className="space-y-4">
-                {/* Side-by-side image comparison */}
+                {/* Interactive slider comparison */}
                 <div className="panel overflow-hidden">
                   <div className="border-b border-line px-6 py-3">
                     <p className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-cyan">
@@ -283,19 +284,25 @@ export default function Workspace() {
                     </p>
                   </div>
 
-                  <div className="relative">
-                    {/* Side by side images */}
+                  {changeImages.length >= 2 && !changeImages[0].isTiff && !changeImages[1].isTiff ? (
+                    <div className="p-4">
+                      <ImageCompare
+                        beforeUrl={changeImages[0].previewUrl}
+                        afterUrl={changeImages[1].previewUrl}
+                        beforeLabel={`Earlier — ${changeImages[0].meta?.filename}`}
+                        afterLabel={`Later — ${changeImages[1].meta?.filename}`}
+                      />
+                    </div>
+                  ) : (
+                    /* Fallback for TIFF or single image — static side by side */
                     <div className="flex">
                       {changeImages.map((img, i) => (
                         <div key={i} className="relative flex-1">
-                          {/* Label */}
                           <div className="absolute left-3 top-3 z-10 rounded bg-void/80 px-2 py-1 backdrop-blur-sm">
                             <span className="font-mono text-[0.55rem] uppercase tracking-[0.14em] text-cyan">
                               {i === 0 ? "Earlier" : "Later"}
                             </span>
                           </div>
-
-                          {/* Image */}
                           {img.isTiff ? (
                             <div className="flex aspect-square items-center justify-center bg-deep">
                               <span className="font-mono text-[0.6rem] uppercase text-faint">
@@ -305,32 +312,30 @@ export default function Workspace() {
                           ) : (
                             <img
                               src={img.previewUrl}
-                              alt={`${i === 0 ? "Earlier" : "Later"} — ${img.meta?.filename}`}
+                              alt={`${i === 0 ? "Earlier" : "Later"}`}
                               className="aspect-square w-full object-cover"
                             />
                           )}
-
-                          {/* Divider line between images */}
                           {i === 0 && changeImages.length > 1 && (
                             <div className="absolute right-0 top-0 h-full w-px bg-cyan/40" />
                           )}
                         </div>
                       ))}
                     </div>
+                  )}
 
-                    {/* Horizontal scrollbar hint for mobile */}
-                    <div className="flex border-t border-line">
-                      {changeImages.map((img, i) => (
-                        <div key={i} className="flex-1 border-r border-line last:border-r-0 bg-panel px-3 py-2">
-                          <p className="truncate font-mono text-[0.52rem] uppercase tracking-[0.12em] text-faint">
-                            {img.meta?.filename}
-                          </p>
-                          <p className="text-xs text-muted">
-                            {img.meta?.format} {img.meta?.width}×{img.meta?.height}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                  {/* File metadata row */}
+                  <div className="flex border-t border-line">
+                    {changeImages.map((img, i) => (
+                      <div key={i} className="flex-1 border-r border-line last:border-r-0 bg-panel px-3 py-2">
+                        <p className="truncate font-mono text-[0.52rem] uppercase tracking-[0.12em] text-faint">
+                          {img.meta?.filename}
+                        </p>
+                        <p className="text-xs text-muted">
+                          {img.meta?.format} {img.meta?.width}×{img.meta?.height}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
