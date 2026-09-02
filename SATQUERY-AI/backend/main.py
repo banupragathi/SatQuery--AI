@@ -19,9 +19,11 @@ Run it with:
 (the dev server will listen on http://localhost:8000)
 """
 from __future__ import annotations
-
 import os
 import uuid
+import image_validator
+import manager
+import registry
 
 import logging
 logging.basicConfig(
@@ -80,10 +82,9 @@ IMAGE_STORE: dict[str, dict] = {}
 from typing import Optional
 
 class AnalyzeRequest(BaseModel):
-    image_id: Optional[str] = None
-    image_ids: Optional[list[str]] = None
+    image_id: str = None
+    image_ids: list[str] = None
     query: str
-
 
 # ---------------------------------------------------------------------------
 # Endpoints
@@ -138,87 +139,84 @@ async def upload(file: UploadFile = File(...)):
         "height": check["height"],
         "size_bytes": check["size_bytes"],
     }
-
-
 @app.post("/analyze")
 def analyze(request: AnalyzeRequest):
-    # 1. Gather all requested images.
-    images = []
-    if request.image_id:
-        img = IMAGE_STORE.get(request.image_id)
-        if not img:
-            raise HTTPException(status_code=404, detail=f"Unknown image_id {request.image_id}")
-        images.append(img)
-        
+    """
+    Route a query to the right specialist. Supports single and multi-image.
+    """
+    # 1. Collect image paths
+    image_paths = []
+    images_meta = []
+
     if request.image_ids:
-        for idx in request.image_ids:
-            img = IMAGE_STORE.get(idx)
-            if not img:
-                raise HTTPException(status_code=404, detail=f"Unknown image_id {idx}")
-            images.append(img)
-            
-    if not images:
-        raise HTTPException(status_code=400, detail="No images provided.")
+        for img_id in request.image_ids:
+            img = IMAGE_STORE.get(img_id)
+            if img is None:
+                raise HTTPException(status_code=404, detail=f"Unknown image_id: {img_id}")
+            image_paths.append(img["path"])
+            images_meta.append(img)
+    elif request.image_id:
+        img = IMAGE_STORE.get(request.image_id)
+        if img is None:
+            raise HTTPException(status_code=404, detail="Unknown image_id.")
+        image_paths.append(img["path"])
+        images_meta.append(img)
+    else:
+        raise HTTPException(status_code=400, detail="No image_id or image_ids provided.")
 
     if not (request.query or "").strip():
         raise HTTPException(status_code=400, detail="Query is empty.")
 
-    # 2. Plan the execution via the planner.
-    import planner
-    is_multi = len(images) > 1
-    
-    tracing_prefix = [
-        {"step": "Images received", "detail": f"{len(images)} images selected"}
-    ]
-    
-    try:
-        plan = planner.create_execution_plan(request.query, is_multi)
-        tracing_prefix.append({"step": "Orchestrator Planned", "detail": f"{len(plan)} tasks detected"})
-        
-        # 3. Execute the plan via the executor.
-        import executor
-        image_paths = [img["path"] for img in images]
-        
-        # Execute branches and aggregate structured UI results.
-        final_payload = executor.execute_plan(plan, image_paths, request.query)
-        final_payload["execution_trace"] = tracing_prefix + final_payload["execution_trace"]
-        return final_payload
-        
-    except Exception as e:
-        # CONTROL PLANE ERROR! e.g., gemini rating limit preventing plan assembly
-        tracing_prefix.append({"step": "Orchestrator Planning Failed", "detail": "Unable to assemble execution sequence."})
-        
-        # We must NOT use ORCHESTRATOR as a specialist string!
-        # Render the direct string value of the error which is already sanitized by gemini_engine.py
-        msg = str(e)
-        if not msg or "Internal" in msg:
-            msg = "The AI model is temporarily unavailable (Quota/Demand limit reached)."
-            
+    # 2. Manager decides the task
+    routing = manager.route(request.query)
+    task = routing["task"]
+
+    # 3. Registry finds the specialist
+    specialist = registry.get_specialist(task)
+    if specialist is None:
         return {
-            "status": "failed",
-            "task": "MULTI-AGENT ANALYSIS",
+            "status": "no_specialist",
+            "task": task,
             "query": request.query,
-            "specialist": "",
-            "model": "",
-            "answer": f"Analysis could not be planned: {msg}",
-            "execution_plan": [],
-            "execution_trace": tracing_prefix,
-            "model_connected": True
+            "routing_reason": routing["routing_reason"],
+            "message": f"No specialist is connected for task '{task}' yet.",
+            "execution_trace": _build_trace(images_meta[0], routing, specialist_ran=False),
         }
+
+    # 4. Run the specialist (multi-image or single-image)
+    if registry.is_multi_image_task(task):
+        result = specialist(image_paths, request.query)
+    else:
+        result = specialist(image_paths[0], request.query)
+
+    return {
+        "status": "completed",
+        "query": request.query,
+        "task": result.get("task", task),
+        "specialist": result.get("specialist"),
+        "model": result.get("model"),
+        "model_connected": result.get("model_connected", False),
+        "answer": result.get("answer"),
+        "message": result.get("message"),
+        "confidence": result.get("confidence"),
+        "evidence": result.get("evidence"),
+        "routing_reason": routing["routing_reason"],
+        "image_count": len(image_paths),
+        "execution_trace": _build_trace(
+            images_meta[0], routing,
+            specialist_ran=True, result=result,
+            image_count=len(image_paths)
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _build_trace(image: dict, routing: dict, specialist_ran: bool, result: dict | None = None) -> list:
-    """
-    Build a simple, honest execution trace the frontend can display.
-
-    Each step is a plain dict {step, detail}. This is real information about
-    what the backend actually did -- not a fabricated AI process.
-    """
+def _build_trace(image: dict, routing: dict, specialist_ran: bool,
+                 result: dict | None = None, image_count: int = 1) -> list:
     trace = [
-        {"step": "Image received", "detail": image["filename"]},
+        {"step": "Images received", "detail": f"{image_count} image(s) uploaded"},
         {
             "step": "Image validated",
             "detail": f"{image.get('format') or 'image'} "

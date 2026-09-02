@@ -282,3 +282,35 @@ def run_gemini_multi(image_paths: list, prompt: str) -> str:
             raise
         except Exception as e:
             raise GeminiError("The AI model encountered an unexpected error.")
+
+def run_gemini_multi(image_paths: list, prompt: str) -> str:
+    """
+    Send MULTIPLE images + one text prompt to Gemini.
+    Used by change analysis and optical+SAR specialists.
+    """
+    api_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise GeminiError("GEMINI_API_KEY is not set in the environment.")
+
+    try:
+        import google.generativeai as genai
+        from PIL import Image
+    except ImportError as e:
+        raise GeminiError(
+            "Required library not installed. Run: "
+            "pip install google-generativeai pillow"
+        ) from e
+
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(GEMINI_MODEL)
+        images = [Image.open(p) for p in image_paths]
+        response = model.generate_content([prompt] + images)
+        text = (response.text or "").strip()
+        if not text:
+            raise GeminiError("Gemini returned an empty response.")
+        return text
+    except GeminiError:
+        raise
+    except Exception as e:
+        raise GeminiError(f"Gemini API call failed: {e}") from e

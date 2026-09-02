@@ -75,4 +75,22 @@ export async function analyzeImage(imageId, query) {
   } catch (err) {
     return { ok: false, error: "Could not reach the backend to analyse." };
   }
+  
+}
+
+export async function analyzeImages(imageIds, query) {
+  try {
+    const res = await fetch(`${API_BASE}/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image_ids: imageIds, query }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return { ok: false, error: data.detail || `Analyse failed (${res.status})` };
+    }
+    return { ok: true, data };
+  } catch (err) {
+    return { ok: false, error: "Could not reach the backend to analyse." };
+  }
 }
