@@ -24,7 +24,8 @@ import uuid
 import image_validator
 import manager
 import registry
-
+import planner
+import executor
 import logging
 logging.basicConfig(
     level=logging.INFO,
@@ -32,7 +33,7 @@ logging.basicConfig(
 )
 
 from dotenv import load_dotenv
-load_dotenv()  # reads backend/.env so GEMINI_API_KEY is available
+load_dotenv()  # reads backend/.env so GEMINI_API_KEY is available reliably
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -167,47 +168,30 @@ def analyze(request: AnalyzeRequest):
     if not (request.query or "").strip():
         raise HTTPException(status_code=400, detail="Query is empty.")
 
-    # 2. Manager decides the task
-    routing = manager.route(request.query)
-    task = routing["task"]
-
-    # 3. Registry finds the specialist
-    specialist = registry.get_specialist(task)
-    if specialist is None:
-        return {
-            "status": "no_specialist",
-            "task": task,
-            "query": request.query,
-            "routing_reason": routing["routing_reason"],
-            "message": f"No specialist is connected for task '{task}' yet.",
-            "execution_trace": _build_trace(images_meta[0], routing, specialist_ran=False),
+    # 2. Multi-Agent Orchestration (Planner -> Executor)
+    is_multi_image = len(image_paths) > 1
+    try:
+        plan = planner.create_execution_plan(request.query, is_multi_image=is_multi_image)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
+    result = executor.execute_plan(plan, image_paths, request.query)
+    
+    # 3. Augment trace with image reception metadata
+    prefix_trace = [
+        {"step": "Images received", "detail": f"{len(image_paths)} image(s) uploaded"},
+        {
+            "step": "Image validated",
+            "detail": f"{images_meta[0].get('format') or 'image'} "
+                      f"{images_meta[0].get('width')}x{images_meta[0].get('height')}",
         }
-
-    # 4. Run the specialist (multi-image or single-image)
-    if registry.is_multi_image_task(task):
-        result = specialist(image_paths, request.query)
-    else:
-        result = specialist(image_paths[0], request.query)
-
-    return {
-        "status": "completed",
-        "query": request.query,
-        "task": result.get("task", task),
-        "specialist": result.get("specialist"),
-        "model": result.get("model"),
-        "model_connected": result.get("model_connected", False),
-        "answer": result.get("answer"),
-        "message": result.get("message"),
-        "confidence": result.get("confidence"),
-        "evidence": result.get("evidence"),
-        "routing_reason": routing["routing_reason"],
-        "image_count": len(image_paths),
-        "execution_trace": _build_trace(
-            images_meta[0], routing,
-            specialist_ran=True, result=result,
-            image_count=len(image_paths)
-        ),
-    }
+    ]
+    if "execution_trace" in result:
+        result["execution_trace"] = prefix_trace + result["execution_trace"]
+        
+    # Standardize output for the frontend
+    result["image_count"] = len(image_paths)
+    return result
 
 
 # ---------------------------------------------------------------------------

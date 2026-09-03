@@ -8,15 +8,34 @@ logger = logging.getLogger("satquery.planner")
 import re
 
 def extract_json(res: str):
-    # Try finding an array or object pattern if it is wrapped in filler
-    match = re.search(r'(?s)```(?:json)?\s*(\[.*\]|\{.*\})\s*```', res)
-    if match:
-        return json.loads(match.group(1).strip())
-    # Fallback to general bounding match
-    match = re.search(r'(?s)(\[.*\]|\{.*\})', res)
-    if match:
-        return json.loads(match.group(1).strip())
-    return json.loads(res.strip())
+    content = res.strip()
+    
+    # Strip explicit markdown fences safely without greedy regex slicing
+    if content.startswith("```"):
+        content = content.strip("`").strip()
+        if content.lower().startswith("json"):
+            content = content[4:].strip()
+
+    # Heuristic repair for abrupt LLM JSON cutoff
+    if content.endswith(','):
+         content = content[:-1]
+    # Check if a list was opened but not closed
+    if content.startswith('[') and not content.endswith(']'):
+         if content.rstrip().endswith('}'):
+              content = content.rstrip() + ']'
+         elif content.rstrip().endswith(','):
+              content = content.rstrip()[:-1] + ']'
+
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+         # Try a fallback if single quotes were used
+         import ast
+         try:
+              return ast.literal_eval(content)
+         except Exception:
+              pass
+         raise
 
 def create_execution_plan(query: str, is_multi_image: bool = False) -> list[dict]:
     capabilities = registry.get_all_capabilities()

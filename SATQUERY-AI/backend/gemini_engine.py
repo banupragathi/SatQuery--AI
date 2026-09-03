@@ -203,7 +203,7 @@ def run_gemini(image_path: str, prompt: str) -> str:
                 url,
                 headers=headers,
                 json=payload,
-                timeout=60
+                timeout=180
             )
 
 
@@ -370,6 +370,9 @@ def run_gemini_text(prompt: str) -> str:
 
         "generationConfig": {
             "temperature": 0.0,
+            
+            # Use native Google Gemini structured JSON output formatting
+            "responseMimeType": "application/json",
 
             # Also limit planning responses
             "maxOutputTokens": 1024
@@ -390,7 +393,7 @@ def run_gemini_text(prompt: str) -> str:
                 url,
                 headers=headers,
                 json=payload,
-                timeout=60
+                timeout=180
             )
 
 

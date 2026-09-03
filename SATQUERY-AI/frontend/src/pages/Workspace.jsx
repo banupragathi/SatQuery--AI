@@ -7,6 +7,7 @@ import ScanningState from "../components/workspace/ScanningState.jsx";
 import ResultPanel from "../components/workspace/ResultPanel.jsx";
 import { uploadImage, analyzeImage, analyzeImages } from "../services/api.js";
 import ImageCompare from "../components/workspace/ImageCompare.jsx";
+import { generatePDF } from "../utils/pdfExport.js";
 
 const CHANGE_KEYWORDS = [
   "change", "changed", "changes", "different", "difference",
@@ -45,6 +46,7 @@ export default function Workspace() {
   const [results, setResults] = useState([]);
   const [changeResult, setChangeResult] = useState(null);
   const [changeImages, setChangeImages] = useState([]);
+  const [isExporting, setIsExporting] = useState(false);
   const pendingRef = useRef(null);
   const scanDoneRef = useRef(false);
 
@@ -265,6 +267,37 @@ export default function Workspace() {
 
           {/* RIGHT: output column */}
           <div className="space-y-6">
+            {phase === "done" && (results.length > 0 || changeResult) && (
+              <div className="flex justify-end">
+                <button
+                  onClick={async () => {
+                      setIsExporting(true);
+                      try {
+                          await generatePDF(query, results, changeResult, changeImages);
+                      } catch (err) {
+                          console.error("PDF generation failed:", err);
+                          alert("Unable to generate the report. Please try again.");
+                      }
+                      setIsExporting(false);
+                  }}
+                  disabled={isExporting}
+                  className="rounded-full border border-cyan/40 bg-cyan/5 px-4 py-1.5 text-xs font-semibold text-cyan transition-colors hover:bg-cyan/10 focus:outline-none disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isExporting ? (
+                    <>
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-cyan border-t-transparent"></span>
+                      Generating report...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="12" y2="18"></line><line x1="15" y1="15" x2="12" y2="18"></line></svg>
+                      Export PDF
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
             {phase === "analyzing" && (
               <ScanningState
                 onComplete={handleScanComplete}
