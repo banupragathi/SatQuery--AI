@@ -13,7 +13,7 @@ from torchvision.models import resnet18, resnet50
 SPECIALIST_NAME = "LAND_COVER"
 MODEL_SLOT = "BigEarthNet (fine-tuned)"
 
-S2_CHECKPOINT = os.path.join(
+S2_CHECKPOINT  = os.path.join(
     os.path.dirname(__file__), "models", "satquery_efficientnet_b4.pth"
 )
 S1_CHECKPOINT = os.path.join(
