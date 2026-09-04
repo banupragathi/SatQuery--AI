@@ -14,7 +14,8 @@ const CHANGE_KEYWORDS = [
   "before and after", "compare", "comparison", "what happened",
   "increased", "decreased", "expanded", "shrunk", "grown",
   "between these", "between the two", "over time", "temporal",
-  "evolution", "progression", "earlier", "later",
+  "evolution", "progression", "earlier", "later", "bitemporal",
+  "bi-temporal",
 ];
 
 const OPTICAL_SAR_KEYWORDS = [
@@ -123,7 +124,6 @@ export default function Workspace() {
     const multiImage = isMultiImageQuery(query.trim(), files.length);
 
     if (multiImage && files.length >= 2) {
-      // CHANGE / OPTICAL+SAR: upload all images, send all IDs together
       const imageIds = [];
       const imagePreviews = [];
 
@@ -138,10 +138,10 @@ export default function Workspace() {
         imagePreviews.push({
           file,
           meta: ul.data,
-          previewUrl: isTiffFile(file) 
-          ? `http://localhost:8000/preview/${ul.data.image_id}`
-          : URL.createObjectURL(file),
-        isTiff: isTiffFile(file)
+          previewUrl: isTiffFile(file)
+            ? `http://localhost:8000/preview/${ul.data.image_id}`
+            : URL.createObjectURL(file),
+          isTiff: isTiffFile(file),
         });
       }
 
@@ -159,7 +159,6 @@ export default function Workspace() {
       };
       finalize();
     } else {
-      // SINGLE IMAGE: analyze each separately (existing behavior)
       const newResults = [];
       for (const file of files) {
         const ul = await uploadImage(file);
@@ -197,6 +196,23 @@ export default function Workspace() {
 
   const canAnalyze = phase !== "analyzing" && files.length > 0 && !!query.trim();
 
+  /* Sample queries change based on how many images are uploaded */
+  const singleImageExamples = [
+    "Is there a water body?",
+    "Describe this image.",
+    "What type of land cover is visible?",
+    "Are there major built-up areas?",
+  ];
+
+  const multiImageExamples = [
+    "Bi-temporal analysis of these images",
+    "What changed between these two images?",
+    "Combine optical and SAR to analyze this area",
+    "Compare and identify differences",
+  ];
+
+  const examples = files.length >= 2 ? multiImageExamples : singleImageExamples;
+
   return (
     <div className="min-h-screen">
       <WorkspaceHeader onReset={handleReset} />
@@ -223,7 +239,6 @@ export default function Workspace() {
             {(phase === "ready" || phase === "analyzing" || phase === "done") &&
               files.length > 0 && (
                 <div className="panel p-6">
-                  {/* Show how many images are selected */}
                   {files.length >= 2 && (
                     <div className="mb-4 flex items-center gap-2 rounded-lg border border-cyan/30 bg-cyan/5 px-4 py-2">
                       <span className="font-mono text-[0.6rem] uppercase tracking-[0.14em] text-cyan">
@@ -240,6 +255,7 @@ export default function Workspace() {
                     onChange={setQuery}
                     onExample={setQuery}
                     disabled={phase === "analyzing"}
+                    examples={examples}
                   />
 
                   <button
@@ -273,14 +289,14 @@ export default function Workspace() {
               <div className="flex justify-end">
                 <button
                   onClick={async () => {
-                      setIsExporting(true);
-                      try {
-                          await generatePDF(query, results, changeResult, changeImages);
-                      } catch (err) {
-                          console.error("PDF generation failed:", err);
-                          alert("Unable to generate the report. Please try again.");
-                      }
-                      setIsExporting(false);
+                    setIsExporting(true);
+                    try {
+                      await generatePDF(query, results, changeResult, changeImages);
+                    } catch (err) {
+                      console.error("PDF generation failed:", err);
+                      alert("Unable to generate the report. Please try again.");
+                    }
+                    setIsExporting(false);
                   }}
                   disabled={isExporting}
                   className="rounded-full border border-cyan/40 bg-cyan/5 px-4 py-1.5 text-xs font-semibold text-cyan transition-colors hover:bg-cyan/10 focus:outline-none disabled:opacity-50 flex items-center gap-2"
@@ -308,10 +324,9 @@ export default function Workspace() {
               />
             )}
 
-                        {/* CHANGE ANALYSIS RESULT — interactive slider comparison */}
+            {/* CHANGE ANALYSIS — clean slider, no labels or metadata */}
             {phase === "done" && changeResult && (
               <div className="space-y-4">
-                {/* Interactive slider comparison */}
                 <div className="panel overflow-hidden">
                   <div className="border-b border-line px-6 py-3">
                     <p className="font-mono text-[0.6rem] uppercase tracking-[0.18em] text-cyan">
@@ -324,30 +339,24 @@ export default function Workspace() {
                       <ImageCompare
                         beforeUrl={changeImages[0].previewUrl}
                         afterUrl={changeImages[1].previewUrl}
-                        beforeLabel={`Earlier — ${changeImages[0].meta?.filename}`}
-                        afterLabel={`Later — ${changeImages[1].meta?.filename}`}
+                        beforeLabel="Earlier"
+                        afterLabel="Later"
                       />
                     </div>
                   ) : (
-                    /* Fallback for TIFF or single image — static side by side */
                     <div className="flex">
                       {changeImages.map((img, i) => (
                         <div key={i} className="relative flex-1">
-                          <div className="absolute left-3 top-3 z-10 rounded bg-void/80 px-2 py-1 backdrop-blur-sm">
-                            <span className="font-mono text-[0.55rem] uppercase tracking-[0.14em] text-cyan">
-                              {i === 0 ? "Earlier" : "Later"}
-                            </span>
-                          </div>
                           {img.isTiff ? (
                             <div className="flex aspect-square items-center justify-center bg-deep">
                               <span className="font-mono text-[0.6rem] uppercase text-faint">
-                                TIFF — {img.meta?.filename}
+                                GeoTIFF uploaded
                               </span>
                             </div>
                           ) : (
                             <img
                               src={img.previewUrl}
-                              alt={`${i === 0 ? "Earlier" : "Later"}`}
+                              alt={i === 0 ? "Earlier" : "Later"}
                               className="aspect-square w-full object-cover"
                             />
                           )}
@@ -358,28 +367,13 @@ export default function Workspace() {
                       ))}
                     </div>
                   )}
-
-                  {/* File metadata row */}
-                  <div className="flex border-t border-line">
-                    {changeImages.map((img, i) => (
-                      <div key={i} className="flex-1 border-r border-line last:border-r-0 bg-panel px-3 py-2">
-                        <p className="truncate font-mono text-[0.52rem] uppercase tracking-[0.12em] text-faint">
-                          {img.meta?.filename}
-                        </p>
-                        <p className="text-xs text-muted">
-                          {img.meta?.format} {img.meta?.width}×{img.meta?.height}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
 
-                {/* Change analysis result */}
                 <ResultPanel result={changeResult} />
               </div>
             )}
 
-            {/* SINGLE IMAGE RESULTS — one per image */}
+            {/* SINGLE IMAGE RESULTS */}
             {phase === "done" &&
               !changeResult &&
               results.map((item, i) => (

@@ -13,9 +13,12 @@ const EXAMPLES = [
   "Describe this image.",
   "What type of land cover is visible?",
   "Are there major built-up areas?",
+  "Bi-temporal analysis of these images",
+  "What changed between these two images?",
+  "Combine optical and SAR to analyze this area"
 ];
 
-export default function QueryInput({ value, onChange, onExample, disabled }) {
+export default function QueryInput({ value, onChange, onExample, disabled, examples }) {
   const {
     isSupported,
     isListening,

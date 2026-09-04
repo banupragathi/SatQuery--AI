@@ -14,7 +14,7 @@ SPECIALIST_NAME = "LAND_COVER"
 MODEL_SLOT = "BigEarthNet (fine-tuned)"
 
 S2_CHECKPOINT = os.path.join(
-    os.path.dirname(__file__), "models", "satquery_bigearthnet_resnet50.pth"
+    os.path.dirname(__file__), "models", "satquery_efficientnet_b4.pth"
 )
 S1_CHECKPOINT = os.path.join(
     os.path.dirname(__file__), "models", "satquery_bigearthnet_s1_sar_final.pth"
