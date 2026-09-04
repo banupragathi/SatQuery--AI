@@ -1,26 +1,25 @@
 """
 remote_sensing.py — BigEarthNet land-cover specialist (S2 + S1)
 ================================================================
-Auto-detects whether the input is 12-band optical (uses S2 ResNet-50)
-or 2-band SAR (uses S1 ResNet-18). One specialist, two trained models.
+Auto-detects whether the input is 12-band optical (uses EfficientNet-B4)
+or 2-band SAR (uses ResNet-18). One specialist, two trained models.
 """
 
 import os
 import torch
 import torch.nn as nn
-from torchvision.models import resnet18, resnet50
+from torchvision.models import resnet18
 
 SPECIALIST_NAME = "LAND_COVER"
 MODEL_SLOT = "BigEarthNet (fine-tuned)"
 
-S2_CHECKPOINT  = os.path.join(
+S2_CHECKPOINT = os.path.join(
     os.path.dirname(__file__), "models", "satquery_efficientnet_b4.pth"
 )
 S1_CHECKPOINT = os.path.join(
     os.path.dirname(__file__), "models", "satquery_bigearthnet_s1_sar_final.pth"
 )
 
-# Module-level caches
 _s2_model = None
 _s2_mean = None
 _s2_std = None
@@ -44,19 +43,17 @@ def _load_s2():
     _classes = cp["classes"]
     _s2_metrics = {"f1": cp.get("f1"), "precision": cp.get("precision"), "recall": cp.get("recall")}
     num_classes = len(_classes)
+
     arch = cp.get("architecture", "resnet50")
     if arch == "efficientnet-b4":
-        try:
-            from efficientnet_pytorch import EfficientNet
-            model = EfficientNet.from_name("efficientnet-b4", in_channels=12, num_classes=num_classes)
-        except ImportError:
-            model = resnet50(weights=None)
-            model.conv1 = nn.Conv2d(12, 64, kernel_size=7, stride=2, padding=3, bias=False)
-            model.fc = nn.Linear(model.fc.in_features, num_classes)
+        from efficientnet_pytorch import EfficientNet
+        model = EfficientNet.from_name("efficientnet-b4", in_channels=12, num_classes=num_classes)
     else:
+        from torchvision.models import resnet50
         model = resnet50(weights=None)
         model.conv1 = nn.Conv2d(12, 64, kernel_size=7, stride=2, padding=3, bias=False)
         model.fc = nn.Linear(model.fc.in_features, num_classes)
+
     model.load_state_dict(cp["model_state_dict"])
     model.eval()
     _s2_model = model
@@ -109,10 +106,11 @@ def _load_bands(image_path: str) -> torch.Tensor:
 
 def _normalize_and_run(model, bands, mean, std, target_size=60):
     num_bands = bands.shape[0]
-    m = mean.view(num_bands, 1, 1)
-    s = std.view(num_bands, 1, 1)
+    m = mean.view(num_bands, 1, 1).to(torch.float32)
+    s = std.view(num_bands, 1, 1).to(torch.float32)
+    bands = bands.to(torch.float32)
     tensor = (bands - m) / s
-    tensor = tensor.unsqueeze(0)
+    tensor = tensor.unsqueeze(0).to(torch.float32)
     tensor = nn.functional.interpolate(
         tensor, size=(target_size, target_size), mode="bilinear", align_corners=False
     )
@@ -155,7 +153,6 @@ def analyze(image_path: str, query: str) -> dict:
         bands = _load_bands(image_path)
         num_bands = bands.shape[0]
 
-        # Auto-detect: 12 bands = optical (S2), 1-2 bands = SAR (S1)
         if num_bands == 12:
             _load_s2()
             probs = _normalize_and_run(_s2_model, bands, _s2_mean, _s2_std)
@@ -183,7 +180,6 @@ def analyze(image_path: str, query: str) -> dict:
                 "evidence": None,
             }
 
-        # Rank predictions
         ranked = sorted(
             zip(_classes, probs.tolist()),
             key=lambda x: x[1],
