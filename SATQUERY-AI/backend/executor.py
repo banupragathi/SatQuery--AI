@@ -76,7 +76,7 @@ def execute_plan(plan: list[dict], image_paths: list[str], query: str) -> dict:
                 enhanced_query += f"\n\nContext from previous steps:\n" + "\n".join(dep_ctx) + "\nUse this context to complete your specific task."
                 
         try:
-            if spec_name == "CHANGE":
+            if registry.is_multi_image_task(spec_name):
                 args = (image_paths, enhanced_query)
             else:
                 args = (image_paths[0], enhanced_query)

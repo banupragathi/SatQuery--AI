@@ -8,6 +8,7 @@ import caption
 import grounding
 import remote_sensing
 import change
+import optical_sar
 
 SPECIALISTS = {
     "VQA": vqa.analyze,
@@ -15,7 +16,7 @@ SPECIALISTS = {
     "GROUNDING": grounding.analyze,
     "LAND_COVER": remote_sensing.analyze,
     "CHANGE": change.analyze,
-    # "OPTICAL_SAR": optical_sar.analyze,  # next to build
+    "OPTICAL_SAR": optical_sar.analyze, 
 }
 
 MULTI_IMAGE_TASKS = {"CHANGE", "OPTICAL_SAR"}

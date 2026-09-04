@@ -1,7 +1,14 @@
 [
   {
-    "specialist": "LAND_COVER",
-    "purpose": "Identify and classify the type of land cover visible in the image",
+    "specialist": "CAPTION",
+    "purpose": "Generate a description of the optical satellite image to establish base context",
     "depends_on": []
+  },
+  {
+    "specialist": "OPTICAL_SAR",
+    "purpose": "Perform cross-modal fusion analysis combining optical and SAR imagery",
+    "depends_on": [
+      "CAPTION"
+    ]
   }
 ]

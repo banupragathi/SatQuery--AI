@@ -4,6 +4,15 @@ Routes user queries to the right specialist. Checks in order:
 LAND_COVER → CHANGE → GROUNDING → CAPTION → VQA (default)
 """
 
+OPTICAL_SAR_KEYWORDS = (
+    "optical and sar", "sar and optical",
+    "both sensors", "both images together",
+    "combine", "cross-modal", "cross modal",
+    "fusion", "complementary",
+    "radar and optical", "optical and radar",
+    "multi-sensor", "multisensor",
+)
+
 LAND_COVER_KEYWORDS = (
     "land cover", "land use", "land-cover", "land-use",
     "classify", "classification",
@@ -84,6 +93,14 @@ def route(query: str) -> dict:
             return {
                 "task": "LAND_COVER",
                 "routing_reason": f"Query contains '{keyword}', routed to BigEarthNet specialist.",
+                "matched_keyword": keyword,
+            }
+        
+    for keyword in OPTICAL_SAR_KEYWORDS:
+        if keyword in text:
+            return {
+                "task": "OPTICAL_SAR",
+                "routing_reason": f"Query contains '{keyword}', routed to cross-modal analysis.",
                 "matched_keyword": keyword,
             }
 
