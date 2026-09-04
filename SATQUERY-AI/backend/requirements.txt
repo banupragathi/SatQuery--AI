@@ -7,3 +7,4 @@ python-dotenv==1.0.1
 torch
 torchvision
 tifffile
+efficientnet_pytorch

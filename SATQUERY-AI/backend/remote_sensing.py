@@ -160,7 +160,7 @@ def analyze(image_path: str, query: str) -> dict:
             _load_s2()
             probs = _normalize_and_run(_s2_model, bands, _s2_mean, _s2_std)
             sensor = "Sentinel-2 Optical"
-            model_name = "BigEarthNet ResNet-50 (S2, fine-tuned)"
+            model_name = "BigEarthNet EfficientNet-B4 (S2, fine-tuned)"
             metrics = _s2_metrics
         elif num_bands <= 2:
             _load_s1()
