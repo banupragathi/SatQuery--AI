@@ -1,20 +1,8 @@
 """
-remote_sensing.py  ---  BigEarthNet land-cover specialist
-=========================================================
-
-SatQuery's GENUINE remote-sensing adapted model. Satisfies the PS requirement:
-"at least one visual or VL component must be fine-tuned or otherwise adapted
-using BigEarthNet."
-
-Takes a 12-band Sentinel-2 GeoTIFF, normalizes with exact training stats,
-runs the fine-tuned ResNet-18, returns 19 land-cover predictions with REAL
-confidence scores (sigmoid probabilities — not invented numbers).
-
-Cannot process JPG/PNG (3 channels). Manager routes RGB -> Gemini,
-multispectral GeoTIFF -> this specialist.
-
-Checkpoint dict keys: model_state_dict, band_mean, band_std, classes,
-f1, precision, recall, val_loss.
+remote_sensing.py — BigEarthNet land-cover specialist (S2 + S1)
+================================================================
+Auto-detects whether the input is 12-band optical (uses S2 ResNet-50)
+or 2-band SAR (uses S1 ResNet-18). One specialist, two trained models.
 """
 
 import os
@@ -23,57 +11,81 @@ import torch.nn as nn
 from torchvision.models import resnet18, resnet50
 
 SPECIALIST_NAME = "LAND_COVER"
-MODEL_SLOT = "BigEarthNet ResNet-50 (fine-tuned)"
+MODEL_SLOT = "BigEarthNet (fine-tuned)"
 
-CHECKPOINT_PATH = os.path.join(
+S2_CHECKPOINT = os.path.join(
     os.path.dirname(__file__), "models", "satquery_bigearthnet_resnet50.pth"
 )
+S1_CHECKPOINT = os.path.join(
+    os.path.dirname(__file__), "models", "satquery_bigearthnet_s1_sar_final.pth"
+)
 
-# Module-level cache (loaded once, reused)
-_model = None
-_band_mean = None
-_band_std = None
+# Module-level caches
+_s2_model = None
+_s2_mean = None
+_s2_std = None
+_s1_model = None
+_s1_mean = None
+_s1_std = None
 _classes = None
-_training_metrics = None
+_s2_metrics = None
+_s1_metrics = None
 
 
-def _load_model():
-    global _model, _band_mean, _band_std, _classes, _training_metrics
-
-    if _model is not None:
+def _load_s2():
+    global _s2_model, _s2_mean, _s2_std, _classes, _s2_metrics
+    if _s2_model is not None:
         return
-
-    if not os.path.exists(CHECKPOINT_PATH):
-        raise FileNotFoundError(
-            f"BigEarthNet checkpoint not found at {CHECKPOINT_PATH}."
-        )
-
-    checkpoint = torch.load(CHECKPOINT_PATH, map_location="cpu", weights_only=False)
-
-    _band_mean = checkpoint["band_mean"]
-    _band_std = checkpoint["band_std"]
-    _classes = checkpoint["classes"]
-
-    _training_metrics = {
-        "f1": checkpoint.get("f1"),
-        "precision": checkpoint.get("precision"),
-        "recall": checkpoint.get("recall"),
-        "val_loss": checkpoint.get("val_loss"),
-    }
-
+    if not os.path.exists(S2_CHECKPOINT):
+        raise FileNotFoundError(f"S2 checkpoint not found at {S2_CHECKPOINT}")
+    cp = torch.load(S2_CHECKPOINT, map_location="cpu", weights_only=False)
+    _s2_mean = cp["band_mean"]
+    _s2_std = cp["band_std"]
+    _classes = cp["classes"]
+    _s2_metrics = {"f1": cp.get("f1"), "precision": cp.get("precision"), "recall": cp.get("recall")}
     num_classes = len(_classes)
-
-    model = resnet50(weights=None)
-    model.conv1 = nn.Conv2d(12, 64, kernel_size=7, stride=2, padding=3, bias=False)
-    model.fc = nn.Linear(model.fc.in_features, num_classes)
-
-    model.load_state_dict(checkpoint["model_state_dict"])
+    arch = cp.get("architecture", "resnet50")
+    if arch == "efficientnet-b4":
+        try:
+            from efficientnet_pytorch import EfficientNet
+            model = EfficientNet.from_name("efficientnet-b4", in_channels=12, num_classes=num_classes)
+        except ImportError:
+            model = resnet50(weights=None)
+            model.conv1 = nn.Conv2d(12, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            model.fc = nn.Linear(model.fc.in_features, num_classes)
+    else:
+        model = resnet50(weights=None)
+        model.conv1 = nn.Conv2d(12, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        model.fc = nn.Linear(model.fc.in_features, num_classes)
+    model.load_state_dict(cp["model_state_dict"])
     model.eval()
-    _model = model
+    _s2_model = model
+
+
+def _load_s1():
+    global _s1_model, _s1_mean, _s1_std, _classes, _s1_metrics
+    if _s1_model is not None:
+        return
+    if not os.path.exists(S1_CHECKPOINT):
+        raise FileNotFoundError(f"S1 checkpoint not found at {S1_CHECKPOINT}")
+    cp = torch.load(S1_CHECKPOINT, map_location="cpu", weights_only=False)
+    _s1_mean = cp["band_mean"]
+    _s1_std = cp["band_std"]
+    if _classes is None:
+        _classes = cp["classes"]
+    _s1_metrics = {"f1": cp.get("f1"), "precision": cp.get("precision"), "recall": cp.get("recall")}
+    num_classes = len(_classes)
+    num_bands = cp.get("num_bands", 2)
+    model = resnet18(weights=None)
+    model.conv1 = nn.Conv2d(num_bands, 64, kernel_size=7, stride=2, padding=3, bias=False)
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    model.load_state_dict(cp["model_state_dict"])
+    model.eval()
+    _s1_model = model
 
 
 def is_configured() -> bool:
-    return os.path.exists(CHECKPOINT_PATH)
+    return os.path.exists(S2_CHECKPOINT) or os.path.exists(S1_CHECKPOINT)
 
 
 def _is_geotiff(image_path: str) -> bool:
@@ -81,15 +93,7 @@ def _is_geotiff(image_path: str) -> bool:
     return ext in (".tif", ".tiff", ".geotiff")
 
 
-def _load_geotiff_bands(image_path: str) -> torch.Tensor:
-    try:
-        import rasterio
-        with rasterio.open(image_path) as src:
-            data = src.read()
-        return torch.tensor(data, dtype=torch.float32)
-    except ImportError:
-        pass
-
+def _load_bands(image_path: str) -> torch.Tensor:
     try:
         import tifffile
         import numpy as np
@@ -100,21 +104,22 @@ def _load_geotiff_bands(image_path: str) -> torch.Tensor:
             data = np.transpose(data, (2, 0, 1))
         return torch.tensor(data, dtype=torch.float32)
     except ImportError:
-        raise ImportError(
-            "Neither rasterio nor tifffile is installed. Run: "
-            "pip install rasterio  OR  pip install tifffile"
-        )
+        raise ImportError("tifffile not installed. Run: pip install tifffile")
 
 
-def _normalize_and_resize(tensor: torch.Tensor) -> torch.Tensor:
-    mean = _band_mean.view(12, 1, 1)
-    std = _band_std.view(12, 1, 1)
-    tensor = (tensor - mean) / std
+def _normalize_and_run(model, bands, mean, std, target_size=60):
+    num_bands = bands.shape[0]
+    m = mean.view(num_bands, 1, 1)
+    s = std.view(num_bands, 1, 1)
+    tensor = (bands - m) / s
     tensor = tensor.unsqueeze(0)
     tensor = nn.functional.interpolate(
-        tensor, size=(60, 60), mode="bilinear", align_corners=False
+        tensor, size=(target_size, target_size), mode="bilinear", align_corners=False
     )
-    return tensor
+    with torch.no_grad():
+        logits = model(tensor)
+        probs = torch.sigmoid(logits).squeeze(0)
+    return probs
 
 
 def analyze(image_path: str, query: str) -> dict:
@@ -125,7 +130,7 @@ def analyze(image_path: str, query: str) -> dict:
             "model": MODEL_SLOT,
             "model_connected": False,
             "answer": None,
-            "message": "BigEarthNet checkpoint not found in backend/models/.",
+            "message": "No BigEarthNet checkpoint found in backend/models/.",
             "confidence": None,
             "evidence": None,
         }
@@ -138,21 +143,32 @@ def analyze(image_path: str, query: str) -> dict:
             "model_connected": True,
             "answer": None,
             "message": (
-                "This specialist requires a 12-band Sentinel-2 GeoTIFF. "
-                "The uploaded image appears to be a standard RGB file. "
-                "Try a VQA or captioning query instead, or upload a "
-                "multispectral GeoTIFF."
+                "This specialist requires a Sentinel GeoTIFF (12-band optical "
+                "or 2-band SAR). The uploaded image is a standard RGB file. "
+                "Try a VQA or captioning query instead."
             ),
             "confidence": None,
             "evidence": None,
         }
 
     try:
-        _load_model()
+        bands = _load_bands(image_path)
+        num_bands = bands.shape[0]
 
-        bands = _load_geotiff_bands(image_path)
-
-        if bands.shape[0] != 12:
+        # Auto-detect: 12 bands = optical (S2), 1-2 bands = SAR (S1)
+        if num_bands == 12:
+            _load_s2()
+            probs = _normalize_and_run(_s2_model, bands, _s2_mean, _s2_std)
+            sensor = "Sentinel-2 Optical"
+            model_name = "BigEarthNet ResNet-50 (S2, fine-tuned)"
+            metrics = _s2_metrics
+        elif num_bands <= 2:
+            _load_s1()
+            probs = _normalize_and_run(_s1_model, bands, _s1_mean, _s1_std)
+            sensor = "Sentinel-1 SAR"
+            model_name = "BigEarthNet ResNet-18 (S1 SAR, fine-tuned)"
+            metrics = _s1_metrics
+        else:
             return {
                 "task": "Land-Cover Classification",
                 "specialist": SPECIALIST_NAME,
@@ -160,19 +176,14 @@ def analyze(image_path: str, query: str) -> dict:
                 "model_connected": True,
                 "answer": None,
                 "message": (
-                    f"Expected 12 spectral bands but found {bands.shape[0]}. "
-                    f"This model was trained on 12-band Sentinel-2 data."
+                    f"Detected {num_bands} bands. Expected 12 (Sentinel-2 optical) "
+                    f"or 2 (Sentinel-1 SAR). Cannot classify with available models."
                 ),
                 "confidence": None,
                 "evidence": None,
             }
 
-        input_tensor = _normalize_and_resize(bands)
-
-        with torch.no_grad():
-            logits = _model(input_tensor)
-            probs = torch.sigmoid(logits).squeeze(0)
-
+        # Rank predictions
         ranked = sorted(
             zip(_classes, probs.tolist()),
             key=lambda x: x[1],
@@ -196,19 +207,21 @@ def analyze(image_path: str, query: str) -> dict:
             f"{p['class']} ({p['confidence']*100:.1f}%)"
             for p in top_predictions
         ]
-        answer_text = "Land-cover predictions: " + ", ".join(answer_parts) + "."
+        answer_text = f"Land-cover predictions ({sensor}): " + ", ".join(answer_parts) + "."
 
         top_confidence = top_predictions[0]["confidence"] if top_predictions else None
+        f1_val = metrics.get("f1", 0) if metrics else 0
 
         return {
             "task": "Land-Cover Classification",
             "specialist": SPECIALIST_NAME,
-            "model": MODEL_SLOT,
+            "model": model_name,
             "model_connected": True,
             "answer": answer_text,
             "message": (
-                "Classified by a ResNet-50 fine-tuned on BigEarthNet "
-                f"(Micro F1: {_training_metrics.get('f1', 0):.4f} on validation). "
+                f"Classified by {model_name} "
+                f"(Micro F1: {f1_val:.4f} on validation). "
+                f"Input: {num_bands}-band {sensor} GeoTIFF. "
                 "This is a genuine remote-sensing adapted model."
             ),
             "confidence": f"{top_confidence*100:.1f}%" if top_confidence else None,

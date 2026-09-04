@@ -24,6 +24,11 @@ export async function checkHealth() {
   }
 }
 
+export function getPreviewUrl(imageId) {
+  return `${API_BASE}/preview/${imageId}`;
+}
+
+
 /**
  * Upload one image file to the backend for validation + storage.
  * @param {File} file - the image chosen/dropped by the user.

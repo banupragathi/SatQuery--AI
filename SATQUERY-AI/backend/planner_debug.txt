@@ -1,0 +1,9 @@
+Traceback:
+Traceback (most recent call last):
+  File "C:\Users\BHAVNA JAYAKUMAR\Downloads\SATQUERY-AI\SATQUERY-AI\backend\planner.py", line 67, in create_execution_plan
+    raw_output = run_gemini_text(prompt)
+  File "C:\Users\BHAVNA JAYAKUMAR\Downloads\SATQUERY-AI\SATQUERY-AI\backend\gemini_engine.py", line 415, in run_gemini_text
+    raise GeminiError(
+    ...<2 lines>...
+    )
+gemini_engine.GeminiError: The AI model is temporarily unavailable (Quota/Demand limit reached).

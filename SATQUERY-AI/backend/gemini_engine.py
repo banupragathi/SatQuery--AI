@@ -101,10 +101,10 @@ def run_gemini(image_path: str, prompt: str) -> str:
                     img = img.convert("RGB")
 
                 # Limit maximum resolution
-                max_dim = 2048
+                max_dim = 1024
 
                 if max(img.width, img.height) > max_dim:
-                    img.thumbnail((max_dim, max_dim))
+                    img.thumbnail((max_dim, max_dim), Image.LANCZOS)
 
                 # Compress to JPEG
                 buffer = io.BytesIO()
@@ -528,8 +528,11 @@ def run_gemini_multi(image_paths: list, prompt: str) -> str:
         images = []
 
         for path in image_paths:
-
             image = Image.open(path)
+
+            # Resize large images to speed up Gemini API calls
+            if max(image.size) > 1024:
+                image.thumbnail((1024, 1024), Image.LANCZOS)
 
             # Gemini can work directly with PIL images.
             # Keep them open for the duration of the request.
@@ -544,7 +547,7 @@ def run_gemini_multi(image_paths: list, prompt: str) -> str:
             [prompt] + images,
 
             generation_config={
-                "max_output_tokens": 1024
+                "max_output_tokens": 2048
             }
         )
 

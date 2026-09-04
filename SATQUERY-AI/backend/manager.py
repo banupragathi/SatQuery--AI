@@ -13,6 +13,13 @@ OPTICAL_SAR_KEYWORDS = (
     "multi-sensor", "multisensor",
 )
 
+SAR_KEYWORDS = (
+    "sar image", "sar data", "sar analysis",
+    "radar image", "radar data",
+    "sentinel-1", "sentinel 1",
+    "synthetic aperture",
+)
+
 LAND_COVER_KEYWORDS = (
     "land cover", "land use", "land-cover", "land-use",
     "classify", "classification",
@@ -101,6 +108,14 @@ def route(query: str) -> dict:
             return {
                 "task": "OPTICAL_SAR",
                 "routing_reason": f"Query contains '{keyword}', routed to cross-modal analysis.",
+                "matched_keyword": keyword,
+            }
+
+    for keyword in SAR_KEYWORDS:
+        if keyword in text:
+            return {
+                "task": "LAND_COVER",
+                "routing_reason": f"Query contains '{keyword}', routed to land-cover specialist (SAR mode).",
                 "matched_keyword": keyword,
             }
 

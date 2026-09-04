@@ -138,8 +138,10 @@ export default function Workspace() {
         imagePreviews.push({
           file,
           meta: ul.data,
-          previewUrl: URL.createObjectURL(file),
-          isTiff: isTiffFile(file),
+          previewUrl: isTiffFile(file) 
+          ? `http://localhost:8000/preview/${ul.data.image_id}`
+          : URL.createObjectURL(file),
+        isTiff: isTiffFile(file)
         });
       }
 

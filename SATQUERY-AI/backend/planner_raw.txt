@@ -1,14 +1,7 @@
 [
   {
-    "specialist": "CAPTION",
-    "purpose": "Generate a description of the optical satellite image to establish base context",
+    "specialist": "CHANGE",
+    "purpose": "Perform bi-temporal change detection and analysis between the two satellite images.",
     "depends_on": []
-  },
-  {
-    "specialist": "OPTICAL_SAR",
-    "purpose": "Perform cross-modal fusion analysis combining optical and SAR imagery",
-    "depends_on": [
-      "CAPTION"
-    ]
   }
 ]
